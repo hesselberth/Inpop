@@ -3,7 +3,7 @@
 """
 Created on Wed Dec 18 12:27:07 2024
 
-@author: Marcel Hesselberth (hessel at domain physics.leidenuniv.nl
+@author: Marcel Hesselberth
 """
 
 
