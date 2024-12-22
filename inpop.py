@@ -10,12 +10,12 @@ Created on Fri Dec  4 20:10:07 2020
 Version: 0.1
 """
 
-from sys import byteorder
-from os import path, SEEK_END
-import struct
-import numpy as np
-
 from cnumba import cnjit, timer
+import numpy as np
+import struct
+from os import path, SEEK_END
+from sys import byteorder
+
 
 bodycodes = {"mercury":0, "venus":1, "earth":2, "mars":3, "jupiter":4,
              "saturn":5, "uranus":6, "neptune":7, "pluto":8, "moon":9,
@@ -172,16 +172,16 @@ class Inpop:
 
         const_names     = [hb[1][6*i:6*(i+1)] for i in range(400)]
 
-        self.jd_beg     = hb[2]  # julian start date
-        self.jd_end     = hb[3]  # julian end date
-        self.interval   = hb[4]  # julian interval
-        self.num_const  = hb[5]  # number of constants in the second record
-        self.AU         = hb[6]  # Astronomical unit
-        self.EMRAT      = hb[7]  # Mearth / Mmoon
+        self.jd_beg     = hb[2]      # julian start date
+        self.jd_end     = hb[3]      # julian end date
+        self.interval   = hb[4]      # julian interval
+        self.num_const  = hb[5]      # number of constants in the second record
+        self.AU         = hb[6]      # Astronomical unit
+        self.EMRAT      = hb[7]      # Mearth / Mmoon
         self.coeff_ptr  = [(hb[8+3*i:8+3*i+3]) for i in range(12)]
-        self.DENUM      = hb[44]  # ephemeris ID
+        self.DENUM      = hb[44]     # ephemeris ID
         self.librat_ptr = hb[45:48]  # libration pointer
-        self.recordsize = hb[48]  # size of the record in bytes
+        self.recordsize = hb[48]     # size of the record in bytes
         self.TTmTDB_ptr = hb[49:52]  # time transformation TTmTDB or TCGmTCB
 
         # these are the location, number of coefficients and number of granules
@@ -283,7 +283,7 @@ class Inpop:
         s += f"unit_pos               {self.unit_pos}\n"
         s += f"unit_vel               {self.unit_vel}\n"
         s += f"timescale              {self.timescale}"
-        s += f"\ncoeff_ptr:\n{self.coeff_ptr}"
+        #s += f"\ncoeff_ptr:\n{self.coeff_ptr}"
         return s
 
 
@@ -293,7 +293,7 @@ class Inpop:
 
     def calc1(self, jd, coeff_ptr):
         """
-        Calculate a state vector for a single body and its derivative.
+        Calculate a state vector for a single body.
 
         This is the Inpop decoding routine common to the calculations, whether
         6d (position-velocity), 3d (libration angles) or 1d (time).
@@ -397,10 +397,10 @@ class Inpop:
         Returns
         -------
         2x3 matrix [P, V].
-        None upon faulure (no ephemeris file found, time outside ephemeris
+        Error upon failure (no ephemeris file found, time outside ephemeris,
         body code invalid.
 
-        P and V are numpy 3-vectors of tyoe np.double. P is the ICRF position
+        P and V are 3-vectors of tyoe np.double. P is the ICRF position
         in au. V is the velocity along the ICRF axes in au/day.
 
         """
@@ -433,14 +433,14 @@ class Inpop:
         return target - center
 
 
-    def librations(self, jd):
+    def LIBRAT(self, jd):
         """
-        Physical librations of the moon.
+        Physical libration angles of the moon.
 
         Parameters
         ----------
         jd : float
-             Date in ephemeris time (TDB or TCB, see self.timescale)
+             Julian date in ephemeris time (TDB or TCB, see self.timescale)
 
         Returns
         -------
@@ -466,12 +466,12 @@ class Inpop:
         Parameters
         ----------
         jd : float
-             Date in ephemeris time (TDB or TCB, see self.timescale)
+             Julian Date in ephemeris time (TDB or TCB, see self.timescale)
 
         Returns
         -------
         float
-             A time difference in seconds.
+             Time difference in seconds.
         """
         if not self.file:
             raise(IOError(f"Ephemeris file ({self.filename}) not open."))
@@ -563,16 +563,10 @@ class Inpop:
 
 
 if __name__ == "__main__":
-    #inpop = Inpop("inpop21a_TDB_m100_p100_tt.dat")
-    #inpop = Inpop("inpop10a_m100_p100_littleendian.dat")
     inpop = Inpop("inpop21a_TDB_m100_p100_tt.dat")
-    #for c in inpop.constants:
-    #    print(c, inpop.constants[c])
-    print()
-    print(str(inpop))
-    print((inpop.PV(2415282.5, 9)-inpop.PV(2415282.5, 1)))
+    for c in inpop.constants:
+        print(c, inpop.constants[c])
+    print(inpop)
     inpop.test()
-    print(inpop.librations(2460669) *180/np.pi)
-    print(inpop.TTmTDB(2415282.5), Inpop.TTmTDB_calc(2415282.5))
     inpop.close()
     
