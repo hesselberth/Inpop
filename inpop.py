@@ -245,6 +245,7 @@ class Inpop:
         if self.mem:
             self.load()
             self.file.close()
+            self.file = None
 
 
     def load(self):
@@ -253,7 +254,7 @@ class Inpop:
         size = self.file.tell()
         self.file.seek(0)
         if size % 8 != 0:
-            raise(FormatError("INPOP File has wrong length."))
+            raise(ValueError("INPOP File has wrong length."))
         data = np.frombuffer(self.file.read(size), dtype=np.double)
         data = data.newbyteorder(self.byteorder)
         self.data = np.copy(data)
@@ -346,8 +347,8 @@ class Inpop:
 
 
     def _PV(self, jd: float, body: int) -> np.ndarray:
-        if not self.file:
-            raise(IOError(f"Ephemeris file ({self.filename}) not open."))
+        if not (self.file or self.mem):
+            raise(IOError(f"Ephemeris file ({self.path}) not open."))
         if body == 11:
             return np.zeros(6).reshape((2, 3))
         if body == 12:
@@ -447,8 +448,8 @@ class Inpop:
         np.array(3, dype="float")
              The 3 physical libration angles in radians
         """
-        if not self.file:
-            raise(IOError(f"Ephemeris file ({self.filename}) not open."))
+        if not (self.file or self.mem):
+            raise(IOError(f"Ephemeris file ({self.path}) not open."))
         if jd < self.jd_beg or jd > self.jd_end:
             raise(ValueError("Julian date must be between %.1f and %.1f" \
                              % (self.jd_beg, self.jd_end)))
@@ -473,8 +474,8 @@ class Inpop:
         float
              Time difference in seconds.
         """
-        if not self.file:
-            raise(IOError(f"Ephemeris file ({self.filename}) not open."))
+        if not (self.file or self.mem):
+            raise(IOError(f"Ephemeris file ({self.path}) not open."))
         if not self.has_time:
             raise(LookupError("Ephemeris lacks time scale transformation"))
         if jd < self.jd_beg or jd > self.jd_end:
@@ -561,12 +562,3 @@ class Inpop:
             self.file.close()
         self.file=None
 
-
-if __name__ == "__main__":
-    inpop = Inpop("inpop21a_TDB_m100_p100_tt.dat")
-    for c in inpop.constants:
-        print(c, inpop.constants[c])
-    print(inpop)
-    inpop.test()
-    inpop.close()
-    
