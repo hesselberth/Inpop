@@ -57,7 +57,7 @@ def chpoly(x, degree):
 @cnjit(signature_or_function = 'f8[:, :](f8, i4, i4, i4, f8[:], f8, f8, i4, i4)')
 def calcm(jd, offset, ncoeffs, ngranules, data, jd_beg, interval, nrecords, recordsize):
     """
-    Calculate a 3 vector and its derivative from memory data.
+    Compute a state vector (3-vector and its derivative) from  data in memory.
 
     This is the Inpop decoding routine common to the calculations, whether
     6d (position-velocity), 3d (libration angles) or 1d (time).
@@ -91,7 +91,7 @@ def calcm(jd, offset, ncoeffs, ngranules, data, jd_beg, interval, nrecords, reco
 
     """
     record = int((jd - jd_beg)//interval) + 1
-    if record < nrecords: record += 1 # not for the last. TODO: test
+    if record < nrecords: record += 1
     raddr = record*recordsize
     jdl = data[raddr]
     jdh = data[raddr+1]
@@ -215,10 +215,11 @@ class Inpop:
         self.has_time      = (self.format//10)%10  == 1
         self.has_asteroids = (self.format//100)%10 == 1
 
-        # conversion to a single unit base.
-        self.unit_time = "s"
-        self.unit_pos  = "au"
-        self.unit_vel  = "au/day"
+        # Use the single unit base and transform where necessary
+        self.unit_time  = "s"
+        self.unit_angle = "rad"
+        self.unit_pos   = "au"
+        self.unit_vel   = "au/day"
 
         if self.constants["UNITE"] == 0:
             self.unite = 0
@@ -240,12 +241,13 @@ class Inpop:
 
         self.nrecords = int((self.jd_end - self.jd_beg) / self.interval)
         
-        self.earthfactor = -1 / (1 + self.EMRAT)
-        self.moonfactor  = self.EMRAT / (1 + self.EMRAT)
         if self.mem:
             self.load()
             self.file.close()
             self.file = None
+
+        self.earthfactor = -1 / (1 + self.EMRAT)
+        self.moonfactor  = self.EMRAT / (1 + self.EMRAT)
 
 
     def load(self):
@@ -261,7 +263,12 @@ class Inpop:
 
 
     def info(self):
+        if self.byteorder == '>':
+            b = "Big-endian"
+        else:
+            b = "Little-endian"
         s  = f"Inpop file             {self.path}\n"
+        s += f"Byte order             {b}\n"
         s += f"Label                  {self.label}\n"
         s += f"JDbeg, JDend, interval {self.jd_beg}, {self.jd_end}, {self.interval}\n"
         s += f"record_size            {self.recordsize}\n"
@@ -406,7 +413,7 @@ class Inpop:
 
         """
         if t == c:
-            return self._PV(jd, 11)
+            return np.zeros(6).reshape((2, 3))
         if t == 2:
             target = self._PV(jd, 9) * self.earthfactor
             if c == 9:
@@ -515,47 +522,6 @@ class Inpop:
         tai_jd = tt_jd - 32.184 / 86400
         tcgmtt = (Lg / (1 - Lg)) * (tai_jd - T0)
         return tcgmtt
-
-    @timer
-    def test(self, filename=None):
-        if filename == None:
-            dirname = path.dirname(self.path)
-            filename = path.basename(self.path)
-            parts = filename.split("_")
-            filename = "testpo."+parts[0].upper()+"_"+parts[1].upper()
-            filename = path.join(dirname, filename)
-        file = open(filename)
-        lines = file.readlines()
-        file.close()
-        test = False
-        largest = 0
-        ecount = 0  # split properties TODO
-        for line in lines:
-            line=line.strip()
-            if test:
-                denum, date, jd, t, c, x, ref = line.split()
-                denum = int(denum)
-                jd = float(jd)
-                t = int(t) - 1
-                c = int(c) - 1
-                x = int(x) - 1
-                ref = float(ref)
-                result = self.PV(jd, t, c).reshape(6)[x]
-                ttmtdb = self.TTmTDB(jd)
-                ttmtdb_calc = Inpop.TTmTDB_calc(jd)
-                t_error = abs(ttmtdb - ttmtdb_calc)
-                if t_error > 1e-5:
-                    print(t_error)
-                error = (result - ref)
-                if error > largest:
-                    largest = error
-                if abs(error) > 1e-12:
-                    print(t, c, x, result, ref, error)
-                    ecount += 1
-            if line.upper() == "EOT":
-                test = True
-        print(ecount, largest)
-
 
     def close(self):
         if self.file:
