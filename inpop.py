@@ -100,9 +100,9 @@ def calcm(jd, offset, ncoeffs, ngranules, data, \
     jd0 = jdl + granule * span
     tc = 2 * ((jd-jd0) / span) - 1
     gaddr = int(raddr+(offset-1+3*granule*ncoeffs))
-    cx = data[gaddr               : gaddr +     ncoeffs]
-    cy = data[gaddr +     ncoeffs : gaddr + 2 * ncoeffs]
-    cz = data[gaddr + 2 * ncoeffs : gaddr + 3 * ncoeffs]
+    cx = np.copy(data[gaddr               : gaddr +     ncoeffs])
+    cy = np.copy(data[gaddr +     ncoeffs : gaddr + 2 * ncoeffs])
+    cz = np.copy(data[gaddr + 2 * ncoeffs : gaddr + 3 * ncoeffs])
     T, D = chpoly(tc, ncoeffs)
     px = np.dot(cx, T)
     py = np.dot(cy, T)
