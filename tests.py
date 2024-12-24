@@ -29,7 +29,7 @@ def parse_testpo(filename):
             denum, date, jd, t, c, x, ref = line.split()
             denum = int(denum)
             if denum != 100:
-                raise(ValueError("Bad DEBUM value in testpo file."))
+                raise(ValueError("Bad DENUM value in testpo file."))
             JD.append(float(jd))
             T.append(int(t) - 1)
             C.append(int(c) - 1)
@@ -107,11 +107,11 @@ def test_TDB_file(filename, mode):
     
     T_ERR = abs(RES_T - RES_Tc)
     largest_T = max(T_ERR)
-    print(f"Largest error: {largest_T:.1e} s (must be below 10 us)")
+    print(f"Largest error: {largest_T:.1e} s (must be below 10 us).")
     if largest_T > 1e-5:
         raise(ValueError("Failed PV test"))
     
-    print("Successfully passed TTmTDB test.")
+    print("Successfully passed the TTmTDB test.")
     print()
 
 def test_TDB_file_both_modes(filename):
@@ -119,7 +119,7 @@ def test_TDB_file_both_modes(filename):
     test_TDB_file(filename, True)
 
 
-print("Running Inpop test...")
+print("Running Inpop test...\n")
 filename = "inpop21a_TDB_m100_p100_tt.dat"
 test_TDB_file_both_modes(filename)
 

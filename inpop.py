@@ -3,17 +3,18 @@
 """
 Compact library for reading Inpop files.
 
-Created on Fri Dec  4 20:10:07 2020
+Created on Fri Dec  4 14:16:35 2024
 
 @author: Marcel Hesselberth
 
-Version: 0.1
+Version: 0.2
 """
 
-from cnumba import cnjit, timer
+from constants import Lg, T0
+from cnumba import cnjit
 import numpy as np
 import struct
-from os import path, SEEK_END
+from os import SEEK_END
 from sys import byteorder
 
 
@@ -24,11 +25,11 @@ bodycodes = {"mercury":0, "venus":1, "earth":2, "mars":3, "jupiter":4,
 
 @cnjit(signature_or_function = 'UniTuple(float64[:], 2)(float64, int64)')
 def chpoly(x, degree):
-    """     
+    """
     Evaluate the Chebyshev polynomial and its derivatives at x.
     
-    Best algorithm according to https://arxiv.org/abs/1312.5677v2
-
+    Best algorithm according to https://arxiv.org/abs/1312.5677v2 .
+    
     Parameters
     ----------
     x      : float.
@@ -40,7 +41,6 @@ def chpoly(x, degree):
     -------
     Polynomials T and (derivative) D.
     Both are arrays of length <degree>.
-
     """
     T = np.ones(degree, dtype=float)
     D = np.zeros(degree, dtype=float)
@@ -54,8 +54,9 @@ def chpoly(x, degree):
     return T, D
 
 
-@cnjit(signature_or_function = 'f8[:, :](f8, i4, i4, i4, f8[:], f8, f8, i4, i4)')
-def calcm(jd, offset, ncoeffs, ngranules, data, jd_beg, interval, nrecords, recordsize):
+@cnjit(signature_or_function = 'f8[:,:](f8, i4, i4, i4, f8[:], f8, f8, i4, i4)')
+def calcm(jd, offset, ncoeffs, ngranules, data, \
+          jd_beg, interval, nrecords, recordsize):
     """
     Compute a state vector (3-vector and its derivative) from  data in memory.
 
@@ -94,7 +95,6 @@ def calcm(jd, offset, ncoeffs, ngranules, data, jd_beg, interval, nrecords, reco
     if record < nrecords: record += 1
     raddr = record*recordsize
     jdl = data[raddr]
-    jdh = data[raddr+1]
     span = interval / ngranules
     granule = int((jd - jdl) // span)
     jd0 = jdl + granule * span
@@ -114,8 +114,31 @@ def calcm(jd, offset, ncoeffs, ngranules, data, jd_beg, interval, nrecords, reco
 
 
 class Inpop:
-    def __init__(self, path, load=True):
-        self.path = path
+    """Decode Inpop .dat files and compute planetary positions."""
+    
+    def __init__(self, filename, load=True):
+        """
+        Inpop constructor.
+        
+        Class to compute state vectors (planetary position and velocity) from
+        the 4d Inpop ephemeris. Data is read from the .dat file using the Inpop
+        file format and may have little or big endian byte order.
+
+        Parameters
+        ----------
+        path : string
+               Path of an Inpop .dat file
+        load : bool, optional
+               If True, the file is completely loaded to memory.
+               If false, the file is accessed fully through seek operations,
+               The default is True.
+
+        Returns
+        -------
+        None.
+
+        """
+        self.path = filename
         self.file = None
         if byteorder == "little":
             self.machine_byteorder = "<"
@@ -251,7 +274,17 @@ class Inpop:
 
 
     def load(self):
-        from os import fstat
+        """
+        Load the Inpop file in memory.
+        
+        This option speeds up the calculations by avoiding file operations.
+        This also allows Numba acceleration.
+
+        Returns
+        -------
+        None.
+
+        """
         self.file.seek(0, SEEK_END)
         size = self.file.tell()
         self.file.seek(0)
@@ -263,6 +296,14 @@ class Inpop:
 
 
     def info(self):
+        """
+        Generate a string containing information about the Inpop file.
+
+        Returns
+        -------
+        s : string
+            
+        """
         if self.byteorder == '>':
             b = "Big-endian"
         else:
@@ -270,7 +311,8 @@ class Inpop:
         s  = f"Inpop file             {self.path}\n"
         s += f"Byte order             {b}\n"
         s += f"Label                  {self.label}\n"
-        s += f"JDbeg, JDend, interval {self.jd_beg}, {self.jd_end}, {self.interval}\n"
+        s += f"JDbeg, JDend, interval {self.jd_beg}, {self.jd_end}, "
+        s += f"{self.interval}\n"
         s += f"record_size            {self.recordsize}\n"
         s += f"num_const              {self.num_const}\n"
         s += f"AU, EMRAT              {self.AU}, {self.EMRAT}\n"
@@ -287,15 +329,23 @@ class Inpop:
         s += f"has_time               {self.has_time}\n"
         s += f"has_asteroids          {self.has_asteroids}\n"
         
-        s += f"unit_time              {self.unit_time}\n"
         s += f"unit_pos               {self.unit_pos}\n"
         s += f"unit_vel               {self.unit_vel}\n"
+        s += f"unit_time              {self.unit_time}\n"
+        s += f"unit_angle             {self.unit_angle}\n"
         s += f"timescale              {self.timescale}"
         #s += f"\ncoeff_ptr:\n{self.coeff_ptr}"
         return s
 
 
     def __str__(self):
+        """
+        Enable printing of an Inpop instance.
+
+        Returns
+        -------
+        string info()
+        """
         return self.info()
 
 
@@ -325,11 +375,17 @@ class Inpop:
         -------
         2x3 matrix pos, vel
         """
+        if jd < self.jd_beg or jd > self.jd_end:
+            raise(ValueError("Julian date must be between %.1f and %.1f." \
+                             % (self.jd_beg, self.jd_end)))
         offset, ncoeffs, ngranules = coeff_ptr
         if self.mem:
             return calcm(jd, offset, ncoeffs, ngranules, \
                          self.data, self.jd_beg, self.interval, \
                          self.nrecords, self.recordsize)
+        else:  # file based
+            if not self.file:
+                raise(IOError(f"Ephemeris file ({self.path}) not open."))
         record = int((jd - self.jd_beg)//self.interval) + 1
         if record < self.nrecords: record += 1
         raddr = record*self.recordsize*8  # locate record
@@ -350,36 +406,22 @@ class Inpop:
         T, D = chpoly(tc, ncoeffs)  # 2 x ncoeffs
         pos = np.dot(coeffs, T)
         vel = np.dot(coeffs, D) * ngranules
-        return np.array([pos, vel])
+        return np.array([pos, vel], dtype = np.double)
 
 
-    def _PV(self, jd: float, body: int) -> np.ndarray:
-        if not (self.file or self.mem):
-            raise(IOError(f"Ephemeris file ({self.path}) not open."))
-        if body == 11:
-            return np.zeros(6).reshape((2, 3))
-        if body == 12:
-            body = 2
-        if body< 0 or body > 10:
-            raise(LookupError("Body code must be between 0 and 12"))
-        if jd < self.jd_beg or jd > self.jd_end:
-            raise(ValueError("Julian date must be between %.1f and %.1f" \
-                             % (self.jd_beg, self.jd_end)))
-        pv = self.calc1(jd, self.coeff_ptr[body])
-        pv[0] *= self.unit_pos_factor
-        pv[1] *= self.unit_vel_factor
-        return pv
-
-
-    def PV(self, jd, t, c= 11):
+    def PV1(self, jd, body):
         """
-        Position and velocity of a body in the ICRF.
-        The public Inpop ephemerides do not contain the velocities so they
-        must be computed from the derivative of the Chebyshev polynomial.
+        Compute the state of a single body in the ICRF frame.
+        
+        The state consists of 2 3-vectors: position and velocity (relative to
+        the solar system barycenter). The position is given in AU, the
+        velocity in AU/day.
 
         Parameters
         ----------
-
+        jd : np.double (or float)
+             Julian date in ephemeris time. Inpop is distributed in TDB and TCB.
+             timescales (see self.timescale).
         body : integer between 0 and 12
         
         0:  Mercury
@@ -396,104 +438,125 @@ class Inpop:
         11: SSB
         12: EMB
 
-        jd : np.double (or higher precision)
-        
-        Julian date in ephemeris time. Inpop is distributed in TDB and TCB.
-        timescales. At this lowest level the time must be expressed in the
-        ephemeris timescale (see self.timescale).
-
         Returns
         -------
         2x3 matrix [P, V].
         Error upon failure (no ephemeris file found, time outside ephemeris,
         body code invalid.
 
-        P and V are 3-vectors of tyoe np.double. P is the ICRF position
-        in au. V is the velocity along the ICRF axes in au/day.
+        """
+        if body < 0 or body > 12:
+            raise(LookupError("Body code must be between 0 and 12."))
+        if body == 11:
+            return np.zeros(6).reshape((2, 3))
+        if body == 12:
+            body = 2
+        pv = self.calc1(jd, self.coeff_ptr[body])
+        pv[0] *= self.unit_pos_factor
+        pv[1] *= self.unit_vel_factor
+        return pv
 
+
+    def PV(self, jd, t, c= 11):
+        """
+        Position and velocity of a target t relative to center c in the ICRF.
+
+        Positions and velocities are computed using the Chebyshev polynomials
+        and their derivatives. The position is given in AU, the velocity
+        in AU/day.
+        
+        Parameters
+        ----------
+        jd : np.double (or float)
+             Julian date in ephemeris time. Inpop is distributed in TDB and TCB.
+             timescales (see self.timescale).
+        t, c : integer between 0 and 12
+        Target body and the Center from which it is observed.
+        
+        0:  Mercury
+        1:  Venus 
+        2:  Earth
+        3:  Mars
+        4:  Jupiter
+        5:  Saturn
+        6:  Uranus
+        7:  Neptune
+        8:  Pluto 
+        9:  Moon
+        10: Sun
+        11: SSB
+        12: EMB
+
+        Returns
+        -------
+        2x3 matrix [P, V].
+        Error upon failure (no ephemeris file found, time outside ephemeris,
+        body code invalid.
         """
         if t == c:
             return np.zeros(6).reshape((2, 3))
         if t == 2:
-            target = self._PV(jd, 9) * self.earthfactor
+            target = self.PV1(jd, 9) * self.earthfactor
             if c == 9:
-                center = self._PV(jd, 9) * self.moonfactor
+                center = self.PV1(jd, 9) * self.moonfactor
             else:
-                target += self._PV(jd, 2)
-                center = self._PV(jd, c)
+                target += self.PV1(jd, 2)
+                center = self.PV1(jd, c)
         elif t == 9:
-            target = self._PV(jd, 9) * self.moonfactor
+            target = self.PV1(jd, 9) * self.moonfactor
             if c == 2:
-                center = self._PV(jd, 9) * self.earthfactor
+                center = self.PV1(jd, 9) * self.earthfactor
             else:
-                target += self._PV(jd, 2)
-                center = self._PV(jd, c)
+                target += self.PV1(jd, 2)
+                center = self.PV1(jd, c)
         else:
-            target = self._PV(jd, t)
+            target = self.PV1(jd, t)
             if c == 2:
-                center = self._PV(jd, 9) * self.earthfactor \
-                    + self._PV(jd, 2)
+                center = self.PV1(jd, 9) * self.earthfactor \
+                    + self.PV1(jd, 2)
             elif c == 9:
-                center = self._PV(jd, 9) * self.moonfactor \
-                    + self._PV(jd, 2)
+                center = self.PV1(jd, 9) * self.moonfactor \
+                    + self.PV1(jd, 2)
             else:
-                center = self._PV(jd, c)
+                center = self.PV1(jd, c)
         return target - center
 
 
-    def LIBRAT(self, jd):
+    def LBR(self, jd):
         """
         Physical libration angles of the moon.
 
         Parameters
         ----------
-        jd : float
-             Julian date in ephemeris time (TDB or TCB, see self.timescale)
+        jd : np.double (or float)
+             Julian time in ephemeris time. Inpop is distributed in TDB and TCB
+             timescales (see self.timescale).
 
         Returns
         -------
         np.array(3, dype="float")
              The 3 physical libration angles in radians
         """
-        if not (self.file or self.mem):
-            raise(IOError(f"Ephemeris file ({self.path}) not open."))
-        if jd < self.jd_beg or jd > self.jd_end:
-            raise(ValueError("Julian date must be between %.1f and %.1f" \
-                             % (self.jd_beg, self.jd_end)))
         return self.calc1(jd, self.librat_ptr)[0]
-
-
-    def _dt(self, jd):
-        """
-        Time difference (in seconds) between 2 time scales.
-        
-        Use the Chebyshev polynomial coefficients in the Inpop file to
-        compute the time difference. This can be used to convert time scales
-        to ephemeris time.
-
-        Parameters
-        ----------
-        jd : float
-             Julian Date in ephemeris time (TDB or TCB, see self.timescale)
-
-        Returns
-        -------
-        float
-             Time difference in seconds.
-        """
-        if not (self.file or self.mem):
-            raise(IOError(f"Ephemeris file ({self.path}) not open."))
-        if not self.has_time:
-            raise(LookupError("Ephemeris lacks time scale transformation"))
-        if jd < self.jd_beg or jd > self.jd_end:
-            raise(ValueError("Julian date must be between %.1f and %.1f" \
-                             % (self.jd_beg, self.jd_end)))
-        pv = self.calc1(jd, self.TTmTDB_ptr)
-        return pv[0][0]
 
 
     @cnjit(signature_or_function='float64(float64)')
     def TTmTDB_calc(tt_jd):  # truncated at <10 us presicion
+        """
+        Time difference between TT and TDB calculated from a series evaluation.
+        
+        The accuracy of the correction (cut off) is 10 us.
+
+        Parameters
+        ----------
+        tt_jd : float
+                Julian time in the TT (terrestrial time) timescale.
+
+        Returns
+        -------
+        float
+                The difference TT-TDB for the TT time, given in seconds.
+        """
         T = (tt_jd - 2451545.0) / 36525
         ttmtdb = -0.001657 * np.sin (628.3076 * T + 6.2401)  \
                 - 0.000022 * np.sin (575.3385 * T + 4.2970)  \
@@ -506,25 +569,104 @@ class Inpop:
 
 
     def TTmTDB(self, tt_jd):
+        """
+        Time difference between TT and TDB.
+        
+        Interpolated using Chebyshev polynomials for an ephemeris file in
+        TDB time that contains time scale transformation data
+        (self.timescale == "TDB" and self.has_time). Otherwise it is calculated
+        using TTmTDB_calc. Note that TDB on average runs at TT rate and this
+        is a small correction of order 1ms. The accuracy of the correction is
+        10 us.
+        
+
+        Parameters
+        ----------
+        tt_jd : float
+                Julian time in the TT (terrestrial time) timescale.
+
+
+        Returns
+        -------
+        float
+                The difference TT-TDB for the TT time, given in seconds.
+        """
         if self.timescale == "TDB":
             if self.has_time:
-                return self._dt(tt_jd)
+                return self.calc1(tt_jd, self.TTmTDB_ptr)[0][0]
         return Inpop.TTmTDB_calc(tt_jd)
     
 
-    def TCGmTCB(self, jd):
+    def TCGmTCB(self, tcg_jd):
+        """
+        Time difference between TCG and TCB.
+        
+        Only available for an ephemeris file in TCB time that contains time
+        scale transformation data (self.timescale == "TCB" and self.has_time). 
+
+        Parameters
+        ----------
+        tcg_jd : float
+                 Julian time in the TCG (geocentric coordinate time) timescale.
+
+
+        Returns
+        -------
+        float
+                The difference TCG-TDB for the TCG time, given in seconds.
+        """
+        if not self.has_time:
+            raise(LookupError("Ephemeris lacks time scale transformation."))
         if not self.timescale == "TCB":
-            raise(LookupError("Ephemeris uses TDB time, not TCB"))            
-        return self._dt(jd)
+            raise(LookupError("Ephemeris uses TDB time, not TCB."))            
+        return self.calc1(tcg_jd, self.TTmTDB_ptr)[0][0]
 
 
-    def TCGmTT(self, tt_jd):
+    @cnjit(signature_or_function='float64(float64)')
+    def TCGmTT(tt_jd):
+        """
+        Time difference between TCG and TT.
+        
+        This difference is required if a TCB ephemeris is accessed through TT.
+        TCG clocks run at a different rate than TT clocks.
+
+        Parameters
+        ----------
+        tt_jd : np.double (or float)
+                Julian time in the TT (terrestrial time) timescale.
+
+        Returns
+        -------
+        float
+                The difference TCG-TT for the TT time, given in seconds.
+
+        """
         tai_jd = tt_jd - 32.184 / 86400
         tcgmtt = (Lg / (1 - Lg)) * (tai_jd - T0)
         return tcgmtt
 
+
     def close(self):
+        """
+        Close the Inpop file.
+
+        Returns
+        -------
+        None.
+
+        """
         if self.file:
             self.file.close()
         self.file=None
 
+
+    def __del__(self):
+        """
+        Destructor, closes the Inpop file (if open).
+
+        Returns
+        -------
+        None.
+
+        """
+        self.close()
