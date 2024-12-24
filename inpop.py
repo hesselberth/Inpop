@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Compact library for reading Inpop files.
+Compact library for reading INPOP files.
 
 Created on Fri Dec  4 14:16:35 2024
 
@@ -60,7 +60,7 @@ def calcm(jd, offset, ncoeffs, ngranules, data, \
     """
     Compute a state vector (3-vector and its derivative) from  data in memory.
 
-    This is the Inpop decoding routine common to the calculations, whether
+    This is the INPOP decoding routine common to the calculations, whether
     6d (position-velocity), 3d (libration angles) or 1d (time).
     calcm is an accelerated version of Inpop.calc1.
 
@@ -121,13 +121,13 @@ class Inpop:
         Inpop constructor.
         
         Class to compute state vectors (planetary position and velocity) from
-        the 4d Inpop ephemeris. Data is read from the .dat file using the Inpop
+        the 4d INPOP ephemeris. Data is read from the .dat file using the INPOP
         file format and may have little or big endian byte order.
 
         Parameters
         ----------
         path : string
-               Path of an Inpop .dat file
+               Path of an INPOP .dat file
         load : bool, optional
                If True, the file is completely loaded to memory.
                If false, the file is accessed fully through seek operations,
@@ -153,12 +153,12 @@ class Inpop:
 
     def open(self):
         """
-        Open the binary Inpop file.
+        Open the binary INPOP file.
         
         Read the header information, the constant values and initialize the
         lookup of Chebyshev polynomials. Some important variables are always
         present (AU, EMRAT, DENUM) and become member variables. According to
-        specification 2.0 Inpop files can also contain asteroid information.
+        specification 2.0 INPOP files can also contain asteroid information.
         Such files are not in the public domain, hence retrieving asteroid
         information is not (yet) implemented.
 
@@ -167,14 +167,14 @@ class Inpop:
         None.
 
         """
-        self.file = open(self.path, 'rb')  # inpop files are binary
+        self.file = open(self.path, 'rb')  # INPOP files are binary
         
         # Decode the header record
         header_spec   = f"{self.byteorder}252s2400sdddidd36ii3ii3i"
         header_struct = struct.Struct(header_spec)
         bytestr       = self.file.read(header_struct.size)
         hb            = header_struct.unpack(bytestr)  # header block
-        self.DENUM    = hb[44]  # must be 100 for inpop
+        self.DENUM    = hb[44]  # must be 100 for INPOP
         if self.DENUM != 100:
             self.file.seek(0)
             self.byteorder = self.opposite_byteorder
@@ -184,7 +184,7 @@ class Inpop:
             hb             = header_struct.unpack(bytestr)  # header block
             self.DENUM     = hb[44]
             if self.DENUM  != 100:
-                raise(IOError("Can't determine Inpop file byteorder."))
+                raise(IOError("Can't determine INPOP file byteorder."))
 
         self.jd_struct  = struct.Struct(f"{self.byteorder}dd") # julian dates
 
@@ -275,7 +275,7 @@ class Inpop:
 
     def load(self):
         """
-        Load the Inpop file in memory.
+        Load the INPOP file in memory.
         
         This option speeds up the calculations by avoiding file operations.
         This also allows Numba acceleration.
@@ -297,7 +297,7 @@ class Inpop:
 
     def info(self):
         """
-        Generate a string containing information about the Inpop file.
+        Generate a string containing information about the INPOP file.
 
         Returns
         -------
@@ -308,7 +308,7 @@ class Inpop:
             b = "Big-endian"
         else:
             b = "Little-endian"
-        s  = f"Inpop file             {self.path}\n"
+        s  = f"INPOP file             {self.path}\n"
         s += f"Byte order             {b}\n"
         s += f"Label                  {self.label}\n"
         s += f"JDbeg, JDend, interval {self.jd_beg}, {self.jd_end}, "
@@ -355,7 +355,7 @@ class Inpop:
 
         This is the Inpop decoding routine common to the calculations, whether
         6d (position-velocity), 3d (libration angles) or 1d (time).
-        The file record is located and checked and subsequently the Inpop
+        The file record is located and checked and subsequently the INPOP
         granule with the coefficients is seeked. Based on the granule size
         the Chebyshev time tc is calculated. If the file is loaded in memory,
         numba-accelerated calcm is called.
@@ -420,7 +420,7 @@ class Inpop:
         Parameters
         ----------
         jd : np.double (or float)
-             Julian date in ephemeris time. Inpop is distributed in TDB and TCB.
+             Julian date in ephemeris time. INPOP is distributed in TDB and TCB.
              timescales (see self.timescale).
         body : integer between 0 and 12
         
@@ -468,7 +468,7 @@ class Inpop:
         Parameters
         ----------
         jd : np.double (or float)
-             Julian date in ephemeris time. Inpop is distributed in TDB and TCB.
+             Julian date in ephemeris time. INPOP is distributed in TDB and TCB.
              timescales (see self.timescale).
         t, c : integer between 0 and 12
         Target body and the Center from which it is observed.
@@ -529,7 +529,7 @@ class Inpop:
         Parameters
         ----------
         jd : np.double (or float)
-             Julian time in ephemeris time. Inpop is distributed in TDB and TCB
+             Julian time in ephemeris time. INPOP is distributed in TDB and TCB
              timescales (see self.timescale).
 
         Returns
@@ -648,7 +648,7 @@ class Inpop:
 
     def close(self):
         """
-        Close the Inpop file.
+        Close the INPOP file.
 
         Returns
         -------
@@ -662,7 +662,7 @@ class Inpop:
 
     def __del__(self):
         """
-        Destructor, closes the Inpop file (if open).
+        Destructor, closes the INPOP file (if open).
 
         Returns
         -------
