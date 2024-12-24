@@ -291,8 +291,9 @@ class Inpop:
         if size % 8 != 0:
             raise(ValueError("INPOP File has wrong length."))
         data = np.frombuffer(self.file.read(size), dtype=np.double)
-        data = data.newbyteorder(self.byteorder)
-        self.data = np.copy(data)
+        if self.byteorder != self.machine_byteorder:
+            data = data.byteswap()  # Changes data (newbyteorder changes view)
+        self.data = np.copy(data)   # Changes array status for Numba
 
 
     def info(self):
@@ -618,7 +619,7 @@ class Inpop:
         if not self.has_time:
             raise(LookupError("Ephemeris lacks time scale transformation."))
         if not self.timescale == "TCB":
-            raise(LookupError("Ephemeris uses TDB time, not TCB."))            
+            raise(LookupError("Ephemeris uses TDB time, not TCB."))
         return self.calc1(tcg_jd, self.TTmTDB_ptr)[0][0]
 
 

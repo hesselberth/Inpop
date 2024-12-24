@@ -14,6 +14,7 @@ import sys, time
 
 
 def parse_testpo(filename):
+    print(f"Loading {filename}")
     file = open(filename)
     lines = file.readlines()
     file.close()
@@ -40,12 +41,12 @@ def parse_testpo(filename):
     return np.array(JD), np.array(T), np.array(C), np.array(X), np.array(REF)
     
 
-def test_TDB_file(filename, mode):
+def test_file(filename, mode):
     if mode:
         s = "memory"
     else:
         s = "disk"
-    print(f"Opening TDB file in {s} mode...")
+    print(f"Opening file in {s} mode:")
     inpop = Inpop(filename, load=mode)
     # no open error
     print("File info:")
@@ -79,7 +80,7 @@ def test_TDB_file(filename, mode):
     print(f"Elapsed time: {t_pv:.3f} s")
     PV_ERR = abs(RES_PV - REF)
     largest_PV = max(PV_ERR)
-    print(f"Largest error: {largest_PV:.1e}")
+    print(f"Largest error: {largest_PV:.1e} AU")
     if largest_PV > 6e-12:
         raise(ValueError("Failed PV test."))
     
@@ -88,7 +89,8 @@ def test_TDB_file(filename, mode):
     if not inpop.has_time:
         print("Skipping TTmTDB test (data not present).")
         return
-
+    if inpop.timescale == "TCB":
+        return  # no ref
     print(f"Computing {n} time conversions...")
     tstart = time.time()
     for i in range(n):
@@ -109,19 +111,28 @@ def test_TDB_file(filename, mode):
     largest_T = max(T_ERR)
     print(f"Largest error: {largest_T:.1e} s (must be below 10 us).")
     if largest_T > 1e-5:
-        raise(ValueError("Failed PV test"))
+        raise(ValueError("Failed TTmTDB test"))
     
     print("Successfully passed the TTmTDB test.")
     print()
 
-def test_TDB_file_both_modes(filename):
-    test_TDB_file(filename, False)
-    test_TDB_file(filename, True)
+
+def test_file_both_modes(filename):
+    test_file(filename, False)
+    test_file(filename, True)
 
 
 print("Running Inpop test...\n")
-filename = "inpop21a_TDB_m100_p100_tt.dat"
-test_TDB_file_both_modes(filename)
-
-
-
+print("Little Endian")
+test_file_both_modes("inpop21a_TDB_m100_p100_tt.dat")
+print()
+print("Big Endian")
+test_file_both_modes("inpop21a_TCB_m100_p100_bigendian.dat")
+print()
+print("TCG")
+test_file_both_modes("inpop21a_TCB_m100_p100_tcg.dat")
+print()
+print("Large file")
+test_file_both_modes("inpop21a_TDB_m1000_p1000_littleendian.dat")
+print()
+print("Successfully passed all tests.")
