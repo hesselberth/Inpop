@@ -15,12 +15,7 @@ from cnumba import cnjit
 import numpy as np
 import struct
 from os import SEEK_END
-from sys import byteorder
-
-
-bodycodes = {"mercury":0, "venus":1, "earth":2, "mars":3, "jupiter":4,
-             "saturn":5, "uranus":6, "neptune":7, "pluto":8, "moon":9,
-                          "sun":10, "ssb":11, "emb":12}
+from sys import byteorder, exit
 
 
 @cnjit(signature_or_function = 'UniTuple(float64[:], 2)(float64, int64)')
@@ -100,9 +95,9 @@ def calcm(jd, offset, ncoeffs, ngranules, data, \
     jd0 = jdl + granule * span
     tc = 2 * ((jd-jd0) / span) - 1
     gaddr = int(raddr+(offset-1+3*granule*ncoeffs))
-    cx = np.copy(data[gaddr               : gaddr +     ncoeffs])
-    cy = np.copy(data[gaddr +     ncoeffs : gaddr + 2 * ncoeffs])
-    cz = np.copy(data[gaddr + 2 * ncoeffs : gaddr + 3 * ncoeffs])
+    cx = data[gaddr               : gaddr +     ncoeffs]
+    cy = data[gaddr +     ncoeffs : gaddr + 2 * ncoeffs]
+    cz = data[gaddr + 2 * ncoeffs : gaddr + 3 * ncoeffs]
     T, D = chpoly(tc, ncoeffs)
     px = np.dot(cx, T)
     py = np.dot(cy, T)
@@ -115,6 +110,10 @@ def calcm(jd, offset, ncoeffs, ngranules, data, \
 
 class Inpop:
     """Decode Inpop .dat files and compute planetary positions."""
+    
+    bodycodes = {"mercury":0, "venus":1, "earth":2, "mars":3, "jupiter":4,
+                 "saturn":5, "uranus":6, "neptune":7, "pluto":8, "moon":9,
+                 "sun":10, "ssb":11, "emb":12}
     
     def __init__(self, filename, load=True):
         """
@@ -494,6 +493,24 @@ class Inpop:
         Error upon failure (no ephemeris file found, time outside ephemeris,
         body code invalid.
         """
+        if not isinstance(t, (int, np.integer)):
+            try:
+                t = Inpop.bodycodes[t.lower()]
+            except:
+                print(f"Unknown target ({t}).\nValid targets are:")
+                inverse = {Inpop.bodycodes[x]:x for x in Inpop.bodycodes.keys()}
+                for i in range(13):
+                    print(f"{i:2d} {inverse[i]}")
+                raise(KeyError) from None  # pep-0409
+        if not isinstance(c, (int, np.integer)):
+            try:
+                c = Inpop.bodycodes[c.lower()]
+            except:
+                print(f"Unknown center ({c}).\nValid centers are:")
+                inverse = {Inpop.bodycodes[x]:x for x in Inpop.bodycodes.keys()}
+                for i in range(13):
+                    print(f"{i:2d} {inverse[i]}")
+                raise(KeyError) from None  # pep-0409        
         if t == c:
             return np.zeros(6).reshape((2, 3))
         if t == 2:
