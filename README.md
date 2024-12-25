@@ -5,4 +5,4 @@ can be downloaded from https://www.imcce.fr/inpop/.
 
 The documentation is at https://github.com/hesselberth/Inpop/wiki.
 
-This Python library is neither related to IMCCE nor to Leiden University.
+This Python library neither has any relation to IMCCE nor to Leiden University.
