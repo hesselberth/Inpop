@@ -53,7 +53,7 @@ def chpoly(x, degree):
 def calcm(jd, offset, ncoeffs, ngranules, data, \
           jd_beg, interval, nrecords, recordsize):
     """
-    Compute a state vector (3-vector and its derivative) from  data in memory.
+    Compute a state vector (3-vector and its derivative) from data in memory.
 
     This is the INPOP decoding routine common to the calculations, whether
     6d (position-velocity), 3d (libration angles) or 1d (time).
@@ -88,16 +88,16 @@ def calcm(jd, offset, ncoeffs, ngranules, data, \
     """
     record = int((jd - jd_beg)//interval) + 1
     if record < nrecords: record += 1
-    raddr = record*recordsize
+    raddr = record * recordsize
     jdl = data[raddr]
     span = interval / ngranules
     granule = int((jd - jdl) // span)
     jd0 = jdl + granule * span
     tc = 2 * ((jd-jd0) / span) - 1
-    gaddr = int(raddr+(offset-1+3*granule*ncoeffs))
-    cx = data[gaddr               : gaddr +     ncoeffs]
-    cy = data[gaddr +     ncoeffs : gaddr + 2 * ncoeffs]
-    cz = data[gaddr + 2 * ncoeffs : gaddr + 3 * ncoeffs]
+    gaddr = int(raddr + (offset - 1 + 3 * granule * ncoeffs))
+    cx = np.copy(data[gaddr               : gaddr +     ncoeffs])
+    cy = np.copy(data[gaddr +     ncoeffs : gaddr + 2 * ncoeffs])
+    cz = np.copy(data[gaddr + 2 * ncoeffs : gaddr + 3 * ncoeffs])
     T, D = chpoly(tc, ncoeffs)
     px = np.dot(cx, T)
     py = np.dot(cy, T)
@@ -388,7 +388,7 @@ class Inpop:
                 raise(IOError(f"Ephemeris file ({self.path}) not open."))
         record = int((jd - self.jd_beg)//self.interval) + 1
         if record < self.nrecords: record += 1
-        raddr = record*self.recordsize*8  # locate record
+        raddr = record * self.recordsize * 8  # locate record
         self.file.seek(raddr)
         bytestr = self.file.read(self.jd_struct.size)  # read record limits
         jdl, jdh = self.jd_struct.unpack(bytestr)
@@ -398,9 +398,9 @@ class Inpop:
         jd0 = jdl + granule * span
         tc = 2 * ((jd-jd0) / span) - 1  # Chebyshev argument for the granule
         assert(tc>=-1 and tc <=1)
-        gaddr = int(raddr+(offset-1 + 3*granule*ncoeffs)*8)  # -1 for C arrays
+        gaddr = int(raddr+(offset - 1 + 3 * granule * ncoeffs) * 8)  # -1 for C
         self.file.seek(gaddr)  # read 3 * ncoeffs 8 bit doubles
-        coeffs = np.frombuffer(self.file.read(24*ncoeffs), dtype=np.double)
+        coeffs = np.frombuffer(self.file.read(24 * ncoeffs), dtype=np.double)
         coeffs = coeffs.newbyteorder(self.byteorder)
         coeffs.resize((3, ncoeffs))  # 3 x ncoeffs matrix
         T, D = chpoly(tc, ncoeffs)  # 2 x ncoeffs
