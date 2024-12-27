@@ -15,7 +15,7 @@ from cnumba import cnjit
 import numpy as np
 import struct
 from os import SEEK_END
-from sys import byteorder, exit
+from sys import byteorder
 
 
 @cnjit(signature_or_function = 'UniTuple(float64[:], 2)(float64, int64)')
@@ -49,8 +49,8 @@ def chpoly(x, degree):
     return T, D
 
 
-@cnjit(signature_or_function = 'f8[:,:](f8, i4, i4, i4, f8[:], f8, f8, i4, i4)')
-def calcm(jd, offset, ncoeffs, ngranules, data, \
+@cnjit(signature_or_function = 'f8[:,:](f8, f8, i4, i4, i4, f8[:], f8, f8, i4, i4)')
+def calcm(jd, jd2, offset, ncoeffs, ngranules, data, \
           jd_beg, interval, nrecords, recordsize):
     """
     Compute a state vector (3-vector and its derivative) from data in memory.
@@ -86,14 +86,14 @@ def calcm(jd, offset, ncoeffs, ngranules, data, \
         2x3 matrix pos, vel
 
     """
-    record = int((jd - jd_beg)//interval) + 1
+    record = int(((jd - jd_beg) + jd2) // interval) + 1
     if record < nrecords: record += 1
     raddr = record * recordsize
     jdl = data[raddr]
     span = interval / ngranules
-    granule = int((jd - jdl) // span)
+    granule = int(((jd - jdl) + jd2) // span)
     jd0 = jdl + granule * span
-    tc = 2 * ((jd-jd0) / span) - 1
+    tc = 2 * (((jd-jd0) + jd2) / span) - 1
     gaddr = int(raddr + (offset - 1 + 3 * granule * ncoeffs))
     cx = np.copy(data[gaddr               : gaddr +     ncoeffs])
     cy = np.copy(data[gaddr +     ncoeffs : gaddr + 2 * ncoeffs])
@@ -349,7 +349,7 @@ class Inpop:
         return self.info()
 
 
-    def calc1(self, jd, coeff_ptr):
+    def calc1(self, coeff_ptr, jd1, jd2):
         """
         Calculate a state vector for a single body.
 
@@ -375,18 +375,19 @@ class Inpop:
         -------
         2x3 matrix pos, vel
         """
+        jd = jd1 + jd2
         if jd < self.jd_beg or jd > self.jd_end:
             raise(ValueError("Julian date must be between %.1f and %.1f." \
                              % (self.jd_beg, self.jd_end)))
         offset, ncoeffs, ngranules = coeff_ptr
         if self.mem:
-            return calcm(jd, offset, ncoeffs, ngranules, \
+            return calcm(jd1, jd2, offset, ncoeffs, ngranules, \
                          self.data, self.jd_beg, self.interval, \
                          self.nrecords, self.recordsize)
         else:  # file based
             if not self.file:
                 raise(IOError(f"Ephemeris file ({self.path}) not open."))
-        record = int((jd - self.jd_beg)//self.interval) + 1
+        record = int(((jd1 - self.jd_beg) + jd2) // self.interval) + 1
         if record < self.nrecords: record += 1
         raddr = record * self.recordsize * 8  # locate record
         self.file.seek(raddr)
@@ -394,9 +395,9 @@ class Inpop:
         jdl, jdh = self.jd_struct.unpack(bytestr)
         assert(jd>=jdl and jd<=jdh)  # check
         span = self.interval / ngranules
-        granule = int((jd - jdl) // span)  # compute the granule
+        granule = int(((jd1 - jdl) + jd2) // span)  # compute the granule
         jd0 = jdl + granule * span
-        tc = 2 * ((jd-jd0) / span) - 1  # Chebyshev argument for the granule
+        tc = 2 * (((jd1-jd0) + jd2) / span) - 1  # Chebyshev argument for the granule
         assert(tc>=-1 and tc <=1)
         gaddr = int(raddr+(offset - 1 + 3 * granule * ncoeffs) * 8)  # -1 for C
         self.file.seek(gaddr)  # read 3 * ncoeffs 8 bit doubles
@@ -409,7 +410,7 @@ class Inpop:
         return np.array([pos, vel], dtype = np.double)
 
 
-    def PV1(self, jd, body):
+    def PV1(self, body, jd, jd2 = 0):
         """
         Compute the state of a single body in the ICRF frame.
         
@@ -451,13 +452,13 @@ class Inpop:
             return np.zeros(6).reshape((2, 3))
         if body == 12:
             body = 2
-        pv = self.calc1(jd, self.coeff_ptr[body])
+        pv = self.calc1(self.coeff_ptr[body], jd, jd2)
         pv[0] *= self.unit_pos_factor
         pv[1] *= self.unit_vel_factor
         return pv
 
 
-    def PV(self, jd, t, c= 11):
+    def PV(self, t, c, jd, jd2 = 0):
         """
         Position and velocity of a target t relative to center c in the ICRF.
 
@@ -514,33 +515,33 @@ class Inpop:
         if t == c:
             return np.zeros(6).reshape((2, 3))
         if t == 2:
-            target = self.PV1(jd, 9) * self.earthfactor
+            target = self.PV1(9, jd, jd2) * self.earthfactor
             if c == 9:
-                center = self.PV1(jd, 9) * self.moonfactor
+                center = self.PV1(9, jd, jd2) * self.moonfactor
             else:
-                target += self.PV1(jd, 2)
-                center = self.PV1(jd, c)
+                target += self.PV1(2, jd, jd2)
+                center = self.PV1(c, jd)
         elif t == 9:
-            target = self.PV1(jd, 9) * self.moonfactor
+            target = self.PV1(9, jd, jd2) * self.moonfactor
             if c == 2:
-                center = self.PV1(jd, 9) * self.earthfactor
+                center = self.PV1(9, jd, jd2) * self.earthfactor
             else:
-                target += self.PV1(jd, 2)
-                center = self.PV1(jd, c)
+                target += self.PV1(2, jd, jd2)
+                center = self.PV1(c, jd, jd2)
         else:
-            target = self.PV1(jd, t)
+            target = self.PV1(t, jd, jd2)
             if c == 2:
-                center = self.PV1(jd, 9) * self.earthfactor \
-                    + self.PV1(jd, 2)
+                center = self.PV1(9, jd, jd2) * self.earthfactor \
+                    + self.PV1(2, jd, jd2)
             elif c == 9:
-                center = self.PV1(jd, 9) * self.moonfactor \
-                    + self.PV1(jd, 2)
+                center = self.PV1(9, jd, jd2) * self.moonfactor \
+                    + self.PV1(2, jd)
             else:
-                center = self.PV1(jd, c)
+                center = self.PV1(c, jd, jd2)
         return target - center
 
 
-    def LBR(self, jd):
+    def LBR(self, jd, jd2 = 0):
         """
         Physical libration angles of the moon.
 
@@ -555,11 +556,10 @@ class Inpop:
         np.array(3, dype="float")
              The 3 physical libration angles in radians
         """
-        return self.calc1(jd, self.librat_ptr)[0]
+        return self.calc1(self.librat_ptr, jd, jd2)[0]
 
 
-    @cnjit(signature_or_function='float64(float64)')
-    def TTmTDB_calc(tt_jd):  # truncated at <10 us presicion
+    def TTmTDB_calc(tt_jd, tt_jd2 = 0):  # truncated at <10 us presicion
         """
         Time difference between TT and TDB calculated from a series evaluation.
         
@@ -575,7 +575,7 @@ class Inpop:
         float
                 The difference TT-TDB for the TT time, given in seconds.
         """
-        T = (tt_jd - 2451545.0) / 36525
+        T = ((tt_jd - 2451545.0) + tt_jd2) / 36525
         ttmtdb = -0.001657 * np.sin (628.3076 * T + 6.2401)  \
                 - 0.000022 * np.sin (575.3385 * T + 4.2970)  \
                 - 0.000014 * np.sin (1256.6152 * T + 6.1969) \
@@ -586,7 +586,7 @@ class Inpop:
         return ttmtdb
 
 
-    def TTmTDB(self, tt_jd):
+    def TTmTDB(self, tt_jd, tt_jd2 = 0):
         """
         Time difference between TT and TDB.
         
@@ -611,11 +611,11 @@ class Inpop:
         """
         if self.timescale == "TDB":
             if self.has_time:
-                return self.calc1(tt_jd, self.TTmTDB_ptr)[0][0]
-        return Inpop.TTmTDB_calc(tt_jd)
+                return self.calc1(self.TTmTDB_ptr, tt_jd, tt_jd2)[0][0]
+        return Inpop.TTmTDB_calc(tt_jd, tt_jd2)
     
 
-    def TCGmTCB(self, tcg_jd):
+    def TCGmTCB(self, tcg_jd, tgc_jd2 = 0):
         """
         Time difference between TCG and TCB.
         
@@ -637,31 +637,7 @@ class Inpop:
             raise(LookupError("Ephemeris lacks time scale transformation."))
         if not self.timescale == "TCB":
             raise(LookupError("Ephemeris uses TDB time, not TCB."))
-        return self.calc1(tcg_jd, self.TTmTDB_ptr)[0][0]
-
-
-    @cnjit(signature_or_function='float64(float64)')
-    def TCGmTT(tt_jd):
-        """
-        Time difference between TCG and TT.
-        
-        This difference is required if a TCB ephemeris is accessed through TT.
-        TCG clocks run at a different rate than TT clocks.
-
-        Parameters
-        ----------
-        tt_jd : np.double (or float)
-                Julian time in the TT (terrestrial time) timescale.
-
-        Returns
-        -------
-        float
-                The difference TCG-TT for the TT time, given in seconds.
-
-        """
-        tai_jd = tt_jd - 32.184 / 86400
-        tcgmtt = (Lg / (1 - Lg)) * (tai_jd - T0)
-        return tcgmtt
+        return self.calc1(self.TTmTDB_ptr, tcg_jd, tgc_jd2)[0][0]
 
 
     def close(self):
