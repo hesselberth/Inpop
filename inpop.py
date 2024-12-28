@@ -410,7 +410,7 @@ class Inpop:
         return np.array([pos, vel], dtype = np.double)
 
 
-    def PV1(self, body, jd, jd2 = 0):
+    def PV1(self, body, jd, jd2):
         """
         Compute the state of a single body in the ICRF frame.
         
@@ -527,7 +527,7 @@ class Inpop:
                    + self.PV1(2, jd, jd2)
         elif c == 9:
             center = self.PV1(9, jd, jd2) * self.moonfactor \
-                   + self.PV1(2, jd)
+                   + self.PV1(2, jd, jd2)
         else:
             center = self.PV1(c, jd, jd2)
         return target - center
