@@ -515,29 +515,21 @@ class Inpop:
         if t == c:
             return np.zeros(6).reshape((2, 3))
         if t == 2:
-            target = self.PV1(9, jd, jd2) * self.earthfactor
-            if c == 9:
-                center = self.PV1(9, jd, jd2) * self.moonfactor
-            else:
-                target += self.PV1(2, jd, jd2)
-                center = self.PV1(c, jd)
+            target = self.PV1(9, jd, jd2) * self.earthfactor \
+                   + self.PV1(2, jd, jd2)
         elif t == 9:
-            target = self.PV1(9, jd, jd2) * self.moonfactor
-            if c == 2:
-                center = self.PV1(9, jd, jd2) * self.earthfactor
-            else:
-                target += self.PV1(2, jd, jd2)
-                center = self.PV1(c, jd, jd2)
+            target = self.PV1(9, jd, jd2) * self.moonfactor \
+                   + self.PV1(2, jd, jd2)
         else:
             target = self.PV1(t, jd, jd2)
-            if c == 2:
-                center = self.PV1(9, jd, jd2) * self.earthfactor \
-                    + self.PV1(2, jd, jd2)
-            elif c == 9:
-                center = self.PV1(9, jd, jd2) * self.moonfactor \
-                    + self.PV1(2, jd)
-            else:
-                center = self.PV1(c, jd, jd2)
+        if c == 2:
+            center = self.PV1(9, jd, jd2) * self.earthfactor \
+                   + self.PV1(2, jd, jd2)
+        elif c == 9:
+            center = self.PV1(9, jd, jd2) * self.moonfactor \
+                   + self.PV1(2, jd)
+        else:
+            center = self.PV1(c, jd, jd2)
         return target - center
 
 
