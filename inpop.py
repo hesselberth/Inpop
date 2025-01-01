@@ -7,10 +7,10 @@ Created on Fri Dec  4 14:16:35 2024
 
 @author: Marcel Hesselberth
 
-Version: 0.2
+Version: 0.3
 """
 
-from constants import Lg, T0
+from constants import Lb, Kb, T0, TDB0
 from cnumba import cnjit
 import numpy as np
 import struct
@@ -37,8 +37,8 @@ def chpoly(x, degree):
     Polynomials T and (derivative) D.
     Both are arrays of length <degree>.
     """
-    T = np.ones(degree, dtype=float)
-    D = np.zeros(degree, dtype=float)
+    T = np.ones(degree, dtype=np.double)
+    D = np.zeros(degree, dtype=np.double)
     T[1] = x
     D[1] = 1
     for i in range(2, degree):
@@ -114,7 +114,8 @@ class Inpop:
     bodycodes = {"mercury":0, "venus":1, "earth":2, "mars":3, "jupiter":4,
                  "saturn":5, "uranus":6, "neptune":7, "pluto":8, "moon":9,
                  "sun":10, "ssb":11, "emb":12}
-    
+
+
     def __init__(self, filename, load=True):
         """
         Inpop constructor.
@@ -410,55 +411,7 @@ class Inpop:
         return np.array([pos, vel], dtype = np.double)
 
 
-    def PV1(self, body, jd, jd2):
-        """
-        Compute the state of a single body in the ICRF frame.
-        
-        The state consists of 2 3-vectors: position and velocity (relative to
-        the solar system barycenter). The position is given in AU, the
-        velocity in AU/day.
-
-        Parameters
-        ----------
-        jd : np.double (or float)
-             Julian date in ephemeris time. INPOP is distributed in TDB and TCB.
-             timescales (see self.timescale).
-        body : integer between 0 and 12
-        
-        0:  Mercury
-        1:  Venus 
-        2:  Earth
-        3:  Mars
-        4:  Jupiter
-        5:  Saturn
-        6:  Uranus
-        7:  Neptune
-        8:  Pluto 
-        9:  Moon
-        10: Sun
-        11: SSB
-        12: EMB
-
-        Returns
-        -------
-        2x3 matrix [P, V].
-        Error upon failure (no ephemeris file found, time outside ephemeris,
-        body code invalid.
-
-        """
-        if body < 0 or body > 12:
-            raise(LookupError("Body code must be between 0 and 12."))
-        if body == 11:
-            return np.zeros(6).reshape((2, 3))
-        if body == 12:
-            body = 2
-        pv = self.calc1(self.coeff_ptr[body], jd, jd2)
-        pv[0] *= self.unit_pos_factor
-        pv[1] *= self.unit_vel_factor
-        return pv
-
-
-    def PV(self, t, c, jd, jd2 = 0):
+    def PV(self, t, c, jd, jd2 = 0, **kwargs):
         """
         Position and velocity of a target t relative to center c in the ICRF.
 
@@ -511,26 +464,62 @@ class Inpop:
                 inverse = {Inpop.bodycodes[x]:x for x in Inpop.bodycodes.keys()}
                 for i in range(13):
                     print(f"{i:2d} {inverse[i]}")
-                raise(KeyError) from None  # pep-0409        
+                raise(KeyError) from None  # pep-0409
+        if t < 0 or t > 12 or c < 0 or c > 12:
+            raise(LookupError("Code must be between 0 and 12."))
+        if kwargs:
+            if "ts" in kwargs:
+                ts = kwargs["ts"]
+                timescale = ts.upper()
+                if timescale == self.timescale:
+                    gr_pos_factor = 1
+                elif timescale == "TCB" and self.timescale == "TDB":
+                    TDBmTCB = (-Lb*86400) * ((jd - T0) + jd2) + TDB0
+                    jd2 += TDBmTCB / 86400
+                    gr_pos_factor = 1/(1-np.longdouble(Lb))
+                elif timescale == "TDB" and self.timescale == "TCB":
+                    TCBmTDB = Lb/Kb * ((jd - T0) + jd2) - TDB0 / (86400 * Kb)
+                    jd2 += TCBmTDB
+                    gr_pos_factor = Kb
+                else:
+                    raise(ValueError("Invaalid timescale, must be TDB or TCB."))
+            else:
+                timescale = self.timescale
+                gr_pos_factor = 1
+        else:
+            timescale = self.timescale
+            gr_pos_factor = 1
         if t == c:
             return np.zeros(6).reshape((2, 3))
         if t == 2:
-            target = self.PV1(9, jd, jd2) * self.earthfactor \
-                   + self.PV1(2, jd, jd2)
+            target = self.calc1(self.coeff_ptr[9], jd, jd2) * self.earthfactor \
+                   + self.calc1(self.coeff_ptr[2], jd, jd2)
         elif t == 9:
-            target = self.PV1(9, jd, jd2) * self.moonfactor \
-                   + self.PV1(2, jd, jd2)
+            target = self.calc1(self.coeff_ptr[9], jd, jd2) * self.moonfactor \
+                   + self.calc1(self.coeff_ptr[2], jd, jd2)
+        elif t == 11:
+            target = np.zeros(6).reshape((2, 3))
+        elif t == 12:
+            target = self.calc1(self.coeff_ptr[2], jd, jd2)
         else:
-            target = self.PV1(t, jd, jd2)
+            target = self.calc1(self.coeff_ptr[t], jd, jd2)
         if c == 2:
-            center = self.PV1(9, jd, jd2) * self.earthfactor \
-                   + self.PV1(2, jd, jd2)
+            center = self.calc1(self.coeff_ptr[9], jd, jd2) * self.earthfactor \
+                   + self.calc1(self.coeff_ptr[2], jd, jd2)
         elif c == 9:
-            center = self.PV1(9, jd, jd2) * self.moonfactor \
-                   + self.PV1(2, jd, jd2)
+            center = self.calc1(self.coeff_ptr[9], jd, jd2) * self.moonfactor \
+                   + self.calc1(self.coeff_ptr[2], jd, jd2)
+        elif c == 11:
+            center = np.zeros(6).reshape((2, 3))
+        elif c == 12:
+            center = self.calc1(self.coeff_ptr[2], jd, jd2)
         else:
-            center = self.PV1(c, jd, jd2)
-        return target - center
+            center = self.calc1(self.coeff_ptr[c], jd, jd2)
+        result= target - center
+        result[0] *= gr_pos_factor * self.unit_pos_factor
+        #result[0] *= self.unit_pos_factor
+        result[1] *= self.unit_vel_factor
+        return result
 
 
     def LBR(self, jd, jd2 = 0):
@@ -549,33 +538,6 @@ class Inpop:
              The 3 physical libration angles in radians
         """
         return self.calc1(self.librat_ptr, jd, jd2)[0]
-
-
-    def TTmTDB_calc(tt_jd, tt_jd2 = 0):  # truncated at <10 us presicion
-        """
-        Time difference between TT and TDB calculated from a series evaluation.
-        
-        The accuracy of the correction (cut off) is 10 us.
-
-        Parameters
-        ----------
-        tt_jd : float
-                Julian time in the TT (terrestrial time) timescale.
-
-        Returns
-        -------
-        float
-                The difference TT-TDB for the TT time, given in seconds.
-        """
-        T = ((tt_jd - 2451545.0) + tt_jd2) / 36525
-        ttmtdb = -0.001657 * np.sin (628.3076 * T + 6.2401)  \
-                - 0.000022 * np.sin (575.3385 * T + 4.2970)  \
-                - 0.000014 * np.sin (1256.6152 * T + 6.1969) \
-                - 0.000005 * np.sin (606.9777 * T + 4.0212)  \
-                - 0.000005 * np.sin (52.9691 * T + 0.4444)   \
-                - 0.000002 * np.sin (21.3299 * T + 5.5431)   \
-                - 0.000010 * T * np.sin (628.3076 * T + 4.2490)
-        return ttmtdb
 
 
     def TTmTDB(self, tt_jd, tt_jd2 = 0):
