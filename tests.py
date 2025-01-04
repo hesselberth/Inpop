@@ -45,7 +45,7 @@ def parse_testpo(filename):
     return np.array(JD), np.array(T), np.array(C), np.array(X), np.array(REF)
     
 
-def test_file(filename, mode, crosscheck=False):
+def tests_file(filename, mode, crosscheck=False):
     if mode:
         s = "memory"
     else:
@@ -159,11 +159,11 @@ def test_file(filename, mode, crosscheck=False):
     print()
 
 
-def test_file_all_modes(filename):
-    test_file(filename, False, False)
-    test_file(filename, True, False)
-    test_file(filename, False, True)
-    test_file(filename, True, True)
+def tests_file_all_modes(filename):
+    tests_file(filename, False, False)
+    tests_file(filename, True, False)
+    tests_file(filename, False, True)
+    tests_file(filename, True, True)
 
 
 def require(url, filepath=""):
@@ -185,7 +185,7 @@ inpop_tdb = Inpop("inpop21a_TDB_m100_p100_tt.dat")
 
 print("Running Inpop test...\n")
 print("Little Endian")
-test_file_all_modes("inpop21a_TDB_m100_p100_tt.dat")
+tests_file_all_modes("inpop21a_TDB_m100_p100_tt.dat")
 # print()
 # print("Big Endian")
 # test_file_all_modes("inpop21a_TCB_m100_p100_bigendian.dat")
