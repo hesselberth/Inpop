@@ -403,7 +403,9 @@ class Inpop:
         gaddr = int(raddr+(offset - 1 + 3 * granule * ncoeffs) * 8)  # -1 for C
         self.file.seek(gaddr)  # read 3 * ncoeffs 8 bit doubles
         coeffs = np.frombuffer(self.file.read(24 * ncoeffs), dtype=np.double)
-        coeffs = coeffs.newbyteorder(self.byteorder)
+        #coeffs = coeffs.newbyteorder(self.byteorder)
+        #coeffs = coeffs.newbyteorder(self.byteorder)
+        coeffs = coeffs.view(coeffs.dtype.newbyteorder(self.byteorder))
         coeffs.resize((3, ncoeffs))  # 3 x ncoeffs matrix
         T, D = chpoly(tc, ncoeffs)  # 2 x ncoeffs
         pos = np.dot(coeffs, T)
