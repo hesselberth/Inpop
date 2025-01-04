@@ -179,7 +179,6 @@ def test_file_all_modes():
     require("https://ftp.imcce.fr/pub/ephem/planets/inpop21a/testpo.INPOP21A_TDB")
 
     filename = "inpop21a_TDB_m100_p100_tt.dat"
-    inpop_tdb = Inpop("inpop21a_TDB_m100_p100_tt.dat")
     inpop_test(filename, False, False)
     inpop_test(filename, True, False)
     inpop_test(filename, False, True)
