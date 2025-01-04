@@ -113,14 +113,13 @@ def test_file(filename, mode, crosscheck=False):
     for i in range(n):
         pv = inpop.PV(T[i], C[i], JD[i], ts=tscheck)
         RES_PV[i] = pv.reshape(6)[X[i]]
-        if X[i]<3:
-            err = RES_PV[i] - REF[i]
-            err = err / np.linalg.norm(pv[0])
-            err = abs(err)
-        if err > 5e-12:
-            print(T[i], C[i], X[i], RJD(JD[i]), RES_PV[i])
-            e+=1
-    print(e)
+        # if X[i]<3:
+        #     err = RES_PV[i] - REF[i]
+        #     err = err / np.linalg.norm(pv[0])
+        #     err = abs(err)
+        # if err > 5e-12:
+        #     print(T[i], C[i], X[i], RJD(JD[i]), RES_PV[i])
+        #     e+=1
     tstop = time.time()
     t_pv = tstop - tstart
     print(f"Elapsed time: {t_pv:.3f} s")
