@@ -99,6 +99,8 @@ def calcm(jd, jd2, offset, ncoeffs, ngranules, data, \
     cy = np.copy(data[gaddr +     ncoeffs : gaddr + 2 * ncoeffs])
     cz = np.copy(data[gaddr + 2 * ncoeffs : gaddr + 3 * ncoeffs])
     T, D = chpoly(tc, ncoeffs)
+    T = np.ascontiguousarray(T)
+    D = np.ascontiguousarray(D)
     px = np.dot(cx, T)
     py = np.dot(cy, T)
     pz = np.dot(cz, T)
@@ -294,6 +296,7 @@ class Inpop:
         if self.byteorder != self.machine_byteorder:
             data = data.byteswap()  # Changes data (newbyteorder changes view)
         self.data = np.copy(data)   # Changes array status for Numba
+        #self.data.flags["ALIGNED"] = True
 
 
     def info(self):
