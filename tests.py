@@ -13,10 +13,7 @@ from os import path
 import sys, time
 import urllib.request
 
-inpop_tdb = Inpop("inpop21a_TDB_m100_p100_tt.dat")
-inpop_tcb = Inpop("inpop21a_TCB_m100_p100_tcg.dat")
-
-from dt import TDBTime, JD2000
+#from dt import TDBTime, JD2000
 from ttmtdb import TTmTDB_calc
 
 
@@ -180,6 +177,10 @@ def require(url, filepath=""):
 require("https://ftp.imcce.fr/pub/ephem/planets/inpop21a/inpop21a_TDB_m100_p100_tt.dat")
 require("https://ftp.imcce.fr/pub/ephem/planets/inpop21a/testpo.INPOP21A_TCB")
 require("https://ftp.imcce.fr/pub/ephem/planets/inpop21a/testpo.INPOP21A_TDB")
+
+
+inpop_tdb = Inpop("inpop21a_TDB_m100_p100_tt.dat")
+inpop_tcb = Inpop("inpop21a_TCB_m100_p100_tcg.dat")
 
 
 print("Running Inpop test...\n")
