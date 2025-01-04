@@ -6,13 +6,14 @@ Created on Sun Dec 22 21:07:07 2024
 @author: hessel
 """
 
-
+from constants import AU, JD2000, DEG2RAD
 from inpop import Inpop
 import numpy as np
 from os import path
 import sys, time
 import urllib.request
 
+from dtmath import RJD
 #from dt import TDBTime, JD2000
 from ttmtdb import TTmTDB_calc
 
@@ -111,13 +112,14 @@ def inpop_test(filename, mode, crosscheck=False):
     for i in range(n):
         pv = inpop.PV(T[i], C[i], JD[i], ts=tscheck)
         RES_PV[i] = pv.reshape(6)[X[i]]
-        # if X[i]<3:
-        #     err = RES_PV[i] - REF[i]
+        if X[i]<3 and ((T[i] == 2 and C[i] == 9) or (T[i] == 9 and  C[i]== 2)):
+            err = RES_PV[i] - REF[i]
         #     err = err / np.linalg.norm(pv[0])
-        #     err = abs(err)
-        # if err > 5e-12:
-        #     print(T[i], C[i], X[i], RJD(JD[i]), RES_PV[i])
-        #     e+=1
+            err = abs(err*AU)
+            if err > .00002:
+                print(T[i], C[i], X[i], RJD(JD[i]), RES_PV[i]*AU, REF[i]*AU)
+                e+=1
+    print(e)
     tstop = time.time()
     t_pv = tstop - tstart
     print(f"Elapsed time: {t_pv:.3f} s")
@@ -171,7 +173,7 @@ def require(url, filepath=""):
     
 
 
-def test_file_all_modes():
+def test_all():
     print("Running Inpop test...\n")
     print("Little Endian")
     require("https://ftp.imcce.fr/pub/ephem/planets/inpop21a/inpop21a_TDB_m100_p100_tt.dat")
@@ -184,6 +186,8 @@ def test_file_all_modes():
     inpop_test(filename, False, True)
     inpop_test(filename, True, True)
 
+if __name__ == "__main__":
+    test_all()
 
 #inpop_tcb = Inpop("inpop21a_TCB_m100_p100_tcg.dat")
 #test_file_all_modes("inpop21a_TDB_m100_p100_tt.dat")
@@ -198,3 +202,6 @@ def test_file_all_modes():
 # test_file_all_modes("inpop21a_TDB_m1000_p1000_littleendian.dat")
 # print()
 # # print("Successfully passed all tests.")
+inpop = Inpop("inpop21a_TDB_m100_p100_tt.dat")
+print(inpop.LBR(JD2000)/DEG2RAD)
+inpop.close()

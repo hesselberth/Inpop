@@ -23,6 +23,7 @@ UAS2RAD = pi / (1000000 * 180 * 60 * 60)
 JD2000  = 2451545.0            # Start of the JD2000 epoch
 MJD0    = 2400000.5            # For computing Modified Julian days
 
+AU      = 149597870.7e3        # astronomical unit in m
 SPD     = 86400                # seconds per day
 CLIGHT  = 2.99792458e8         # m/s
 GS      = 1.32712440017987e20  # heliocentric gravitational constant, m3/s2

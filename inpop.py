@@ -406,8 +406,6 @@ class Inpop:
         gaddr = int(raddr+(offset - 1 + 3 * granule * ncoeffs) * 8)  # -1 for C
         self.file.seek(gaddr)  # read 3 * ncoeffs 8 bit doubles
         coeffs = np.frombuffer(self.file.read(24 * ncoeffs), dtype=np.double)
-        #coeffs = coeffs.newbyteorder(self.byteorder)
-        #coeffs = coeffs.newbyteorder(self.byteorder)
         coeffs = coeffs.view(coeffs.dtype.newbyteorder(self.byteorder))
         coeffs.resize((3, ncoeffs))  # 3 x ncoeffs matrix
         T, D = chpoly(tc, ncoeffs)  # 2 x ncoeffs
@@ -479,9 +477,9 @@ class Inpop:
                 if timescale == self.timescale:
                     gr_pos_factor = 1
                 elif timescale == "TCB" and self.timescale == "TDB":
-                    TDBmTCB = (-Lb*86400) * ((jd - T0) + jd2) + TDB0
-                    jd2 += TDBmTCB / 86400
-                    gr_pos_factor = 1/(1-np.longdouble(Lb))
+                    TDBmTCB = -Lb * ((jd - T0) + jd2) + TDB0 / 86400
+                    jd2 += TDBmTCB
+                    gr_pos_factor = 1/(1-Lb)
                 elif timescale == "TDB" and self.timescale == "TCB":
                     TCBmTDB = Lb/Kb * ((jd - T0) + jd2) - TDB0 / (86400 * Kb)
                     jd2 += TCBmTDB
@@ -489,10 +487,8 @@ class Inpop:
                 else:
                     raise(ValueError("Invaalid timescale, must be TDB or TCB."))
             else:
-                timescale = self.timescale
                 gr_pos_factor = 1
         else:
-            timescale = self.timescale
             gr_pos_factor = 1
         if t == c:
             return np.zeros(6).reshape((2, 3))
@@ -522,12 +518,11 @@ class Inpop:
             center = self.calc1(self.coeff_ptr[c], jd, jd2)
         result= target - center
         result[0] *= gr_pos_factor * self.unit_pos_factor
-        #result[0] *= self.unit_pos_factor
         result[1] *= self.unit_vel_factor
         return result
 
 
-    def LBR(self, jd, jd2 = 0):
+    def LBR(self, jd, jd2 = 0, **kwargs):
         """
         Physical libration angles of the moon.
 
@@ -542,6 +537,20 @@ class Inpop:
         np.array(3, dype="float")
              The 3 physical libration angles in radians
         """
+        if kwargs:
+            if "ts" in kwargs:
+                ts = kwargs["ts"]
+                timescale = ts.upper()
+                if timescale == self.timescale:
+                    pass
+                elif timescale == "TCB" and self.timescale == "TDB":
+                    TDBmTCB = -Lb * ((jd - T0) + jd2) + TDB0 / 86400
+                    jd2 += TDBmTCB
+                elif timescale == "TDB" and self.timescale == "TCB":
+                    TCBmTDB = (Lb/Kb) * ((jd - T0) + jd2) - TDB0 / (86400 * Kb)
+                    jd2 += TCBmTDB
+                else:
+                    raise(ValueError("Invaalid timescale, must be TDB or TCB."))
         return self.calc1(self.librat_ptr, jd, jd2)[0]
 
 
