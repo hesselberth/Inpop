@@ -180,7 +180,7 @@ require("https://ftp.imcce.fr/pub/ephem/planets/inpop21a/testpo.INPOP21A_TDB")
 
 
 inpop_tdb = Inpop("inpop21a_TDB_m100_p100_tt.dat")
-inpop_tcb = Inpop("inpop21a_TCB_m100_p100_tcg.dat")
+#inpop_tcb = Inpop("inpop21a_TCB_m100_p100_tcg.dat")
 
 
 print("Running Inpop test...\n")
