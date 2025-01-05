@@ -414,7 +414,7 @@ class Inpop:
         return np.array([pos, vel], dtype = np.double)
 
 
-    def PV(self, t, c, jd, jd2 = 0, **kwargs):
+    def PV(self, jd, t, c, **kwargs):
         """
         Position and velocity of a target t relative to center c in the ICRF.
 
@@ -450,6 +450,11 @@ class Inpop:
         Error upon failure (no ephemeris file found, time outside ephemeris,
         body code invalid.
         """
+        if isinstance(jd, np.ndarray):
+            jd2 = jd[1]
+            jd  = jd[0]
+        else:
+            jd2 = 0
         if not isinstance(t, (int, np.integer)):
             try:
                 t = Inpop.bodycodes[t.lower()]
@@ -522,7 +527,7 @@ class Inpop:
         return result
 
 
-    def LBR(self, jd, jd2 = 0, **kwargs):
+    def LBR(self, jd, **kwargs):
         """
         Physical libration angles of the moon.
 
@@ -537,6 +542,11 @@ class Inpop:
         np.array(3, dype="float")
              The 3 physical libration angles in radians
         """
+        if isinstance(jd, np.ndarray):
+            jd2 = jd[1]
+            jd  = jd[0]
+        else:
+            jd2 = 0
         if kwargs:
             if "ts" in kwargs:
                 ts = kwargs["ts"]
@@ -554,7 +564,7 @@ class Inpop:
         return self.calc1(self.librat_ptr, jd, jd2)[0]
 
 
-    def TTmTDB(self, tt_jd, tt_jd2 = 0):
+    def TTmTDB(self, tt_jd):
         """
         Time difference between TT and TDB.
         
@@ -577,13 +587,18 @@ class Inpop:
         float
                 The difference TT-TDB for the TT time, given in seconds.
         """
+        if isinstance(tt_jd, np.ndarray):
+            tt_jd2 = tt_jd[1]
+            tt_jd  = tt_jd[0]
+        else:
+            tt_jd2 = 0
         if self.timescale == "TDB":
             if self.has_time:
                 return self.calc1(self.TTmTDB_ptr, tt_jd, tt_jd2)[0][0]
         return Inpop.TTmTDB_calc(tt_jd, tt_jd2)
     
 
-    def TCGmTCB(self, tcg_jd, tgc_jd2 = 0):
+    def TCGmTCB(self, tcg_jd):
         """
         Time difference between TCG and TCB.
         
@@ -601,6 +616,11 @@ class Inpop:
         float
                 The difference TCG-TDB for the TCG time, given in seconds.
         """
+        if isinstance(tcg_jd, np.ndarray):
+            tcg_jd2 = tcg_jd[1]
+            tcg_jd  = tcg_jd[0]
+        else:
+            tcg_jd2 = 0
         if not self.has_time:
             raise(LookupError("Ephemeris lacks time scale transformation."))
         if not self.timescale == "TCB":
