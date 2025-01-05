@@ -180,6 +180,10 @@ def test_all():
     inpop_test(filename, False, True)
     inpop_test(filename, True, True)
 
+    inpop = Inpop("inpop21a_TDB_m100_p100_tt.dat")
+    print(inpop.LBR(JD2000)/DEG2RAD)
+    inpop.close()
+
 if __name__ == "__main__":
     test_all()
 
@@ -196,6 +200,3 @@ if __name__ == "__main__":
 # test_file_all_modes("inpop21a_TDB_m1000_p1000_littleendian.dat")
 # print()
 # # print("Successfully passed all tests.")
-inpop = Inpop("inpop21a_TDB_m100_p100_tt.dat")
-print(inpop.LBR(JD2000)/DEG2RAD)
-inpop.close()
