@@ -12,9 +12,6 @@ import numpy as np
 from os import path
 import time
 import urllib.request
-
-from dtmath import RJD
-#from dt import TDBTime, JD2000
 from ttmtdb import TTmTDB_calc
 
 def parse_testpo(filename):
