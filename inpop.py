@@ -64,11 +64,11 @@ def calcm(jd, jd2, offset, ncoeffs, ngranules, data, \
     jd         : float
                  Julian date
     offset     : int
-                 coef_ptr[0]
+                 coeff_ptr[0]
     ncoeffs    : int
-                 coef_ptr[1]
+                 coeff_ptr[1]
     ngranules  : int
-                 coef_ptr[2]
+                 coeff_ptr[2]
     data       : ndarray
                  self.data
     jd_beg     : float
@@ -353,7 +353,7 @@ class Inpop:
         return self.info()
 
 
-    def calc1(self, coeff_ptr, jd1, jd2):
+    def calc1(self, jd1, jd2, coeff_ptr):
         """
         Calculate a state vector for a single body.
 
@@ -450,11 +450,20 @@ class Inpop:
         Error upon failure (no ephemeris file found, time outside ephemeris,
         body code invalid.
         """
+        # Unpack jd array. Must have length <=2.
         if isinstance(jd, np.ndarray):
-            jd2 = jd[1]
-            jd  = jd[0]
+            if len(jd) == 1:
+                jd2 = 0
+                jd  = jd[1]
+            elif len(jd) == 2:
+                jd2 = jd[1]
+                jd  = jd[0]
+            else:
+                raise(ValueError("JD Array must have length 1 or 2"))
         else:
             jd2 = 0
+
+        # Convert target to integer
         if not isinstance(t, (int, np.integer)):
             try:
                 t = Inpop.bodycodes[t.lower()]
@@ -464,6 +473,8 @@ class Inpop:
                 for i in range(13):
                     print(f"{i:2d} {inverse[i]}")
                 raise(KeyError) from None  # pep-0409
+
+        # Convert center to integer
         if not isinstance(c, (int, np.integer)):
             try:
                 c = Inpop.bodycodes[c.lower()]
@@ -473,8 +484,11 @@ class Inpop:
                 for i in range(13):
                     print(f"{i:2d} {inverse[i]}")
                 raise(KeyError) from None  # pep-0409
+
         if t < 0 or t > 12 or c < 0 or c > 12:
             raise(LookupError("Code must be between 0 and 12."))
+
+        # Decode ts argument. Apply relativistic cobversions if needed.
         if kwargs:
             if "ts" in kwargs:
                 ts = kwargs["ts"]
@@ -495,32 +509,36 @@ class Inpop:
                 gr_pos_factor = 1
         else:
             gr_pos_factor = 1
+            
+        # Decode and compute  special cases for earth, moon, emb, ssb
         if t == c:
             return np.zeros(6).reshape((2, 3))
         if t == 2:
-            target = self.calc1(self.coeff_ptr[9], jd, jd2) * self.earthfactor \
-                   + self.calc1(self.coeff_ptr[2], jd, jd2)
+            target = self.calc1(jd, jd2, self.coeff_ptr[9]) * self.earthfactor \
+                   + self.calc1(jd, jd2, self.coeff_ptr[2])
         elif t == 9:
-            target = self.calc1(self.coeff_ptr[9], jd, jd2) * self.moonfactor \
-                   + self.calc1(self.coeff_ptr[2], jd, jd2)
+            target = self.calc1(jd, jd2, self.coeff_ptr[9]) * self.moonfactor \
+                   + self.calc1(jd, jd2, self.coeff_ptr[2])
         elif t == 11:
             target = np.zeros(6).reshape((2, 3))
         elif t == 12:
-            target = self.calc1(self.coeff_ptr[2], jd, jd2)
+            target = self.calc1(jd, jd2, self.coeff_ptr[2])
         else:
-            target = self.calc1(self.coeff_ptr[t], jd, jd2)
+            target = self.calc1(jd, jd2, self.coeff_ptr[t])
         if c == 2:
-            center = self.calc1(self.coeff_ptr[9], jd, jd2) * self.earthfactor \
-                   + self.calc1(self.coeff_ptr[2], jd, jd2)
+            center = self.calc1(jd, jd2, self.coeff_ptr[9]) * self.earthfactor \
+                   + self.calc1(jd, jd2, self.coeff_ptr[2])
         elif c == 9:
-            center = self.calc1(self.coeff_ptr[9], jd, jd2) * self.moonfactor \
-                   + self.calc1(self.coeff_ptr[2], jd, jd2)
+            center = self.calc1(jd, jd2, self.coeff_ptr[9]) * self.moonfactor \
+                   + self.calc1(jd, jd2, self.coeff_ptr[2])
         elif c == 11:
             center = np.zeros(6).reshape((2, 3))
         elif c == 12:
-            center = self.calc1(self.coeff_ptr[2], jd, jd2)
+            center = self.calc1(jd, jd2, self.coeff_ptr[2])
         else:
-            center = self.calc1(self.coeff_ptr[c], jd, jd2)
+            center = self.calc1(jd, jd2, self.coeff_ptr[c])
+
+        # relativistic and unit conversions
         result= target - center
         result[0] *= gr_pos_factor * self.unit_pos_factor
         result[1] *= self.unit_vel_factor
@@ -542,11 +560,19 @@ class Inpop:
         np.array(3, dype="float")
              The 3 physical libration angles in radians
         """
+
         if isinstance(jd, np.ndarray):
-            jd2 = jd[1]
-            jd  = jd[0]
+            if len(jd) == 1:
+                jd2 = 0
+                jd  = jd[1]
+            elif len(jd) == 2:
+                jd2 = jd[1]
+                jd  = jd[0]
+            else:
+                raise(ValueError("JD Array must have length 1 or 2"))
         else:
             jd2 = 0
+
         if kwargs:
             if "ts" in kwargs:
                 ts = kwargs["ts"]
@@ -561,7 +587,7 @@ class Inpop:
                     jd2 += TCBmTDB
                 else:
                     raise(ValueError("Invaalid timescale, must be TDB or TCB."))
-        return self.calc1(self.librat_ptr, jd, jd2)[0]
+        return self.calc1(jd, jd2, self.librat_ptr)[0]
 
 
     def TTmTDB(self, tt_jd):
@@ -587,15 +613,23 @@ class Inpop:
         float
                 The difference TT-TDB for the TT time, given in seconds.
         """
+
         if isinstance(tt_jd, np.ndarray):
-            tt_jd2 = tt_jd[1]
-            tt_jd  = tt_jd[0]
+            if len(tt_jd) == 1:
+                tt_jd2 = 0
+                tt_jd  = tt_jd[1]
+            elif len(tt_jd) == 2:
+                tt_jd2 = tt_jd[1]
+                tt_jd  = tt_jd[0]
+            else:
+                raise(ValueError("JD Array must have length 1 or 2"))
         else:
             tt_jd2 = 0
+
         if self.timescale == "TDB":
             if self.has_time:
-                return self.calc1(self.TTmTDB_ptr, tt_jd, tt_jd2)[0][0]
-        return Inpop.TTmTDB_calc(tt_jd, tt_jd2)
+                return self.calc1(tt_jd, tt_jd2, self.TTmTDB_ptr)[0][0]
+        raise(KeyError("Ephemeris lacks TTmTDB transform"))
     
 
     def TCGmTCB(self, tcg_jd):
@@ -616,16 +650,24 @@ class Inpop:
         float
                 The difference TCG-TDB for the TCG time, given in seconds.
         """
+        
         if isinstance(tcg_jd, np.ndarray):
-            tcg_jd2 = tcg_jd[1]
-            tcg_jd  = tcg_jd[0]
+            if len(tcg_jd) == 1:
+                tcg_jd2 = 0
+                tcg_jd  = tcg_jd[1]
+            elif len(tcg_jd) == 2:
+                tcg_jd2 = tcg_jd[1]
+                tcg_jd  = tcg_jd[0]
+            else:
+                raise(ValueError("JD Array must have length 1 or 2"))
         else:
             tcg_jd2 = 0
-        if not self.has_time:
-            raise(LookupError("Ephemeris lacks time scale transformation."))
-        if not self.timescale == "TCB":
-            raise(LookupError("Ephemeris uses TDB time, not TCB."))
-        return self.calc1(self.TTmTDB_ptr, tcg_jd, tgc_jd2)[0][0]
+
+ 
+        if self.timescale == "TCB":
+            if self.has_time:
+                return self.calc1(tcg_jd, tcg_jd2, self.TTmTDB_ptr)[0][0]
+        raise(KeyError("Ephemeris lacks TTmTDB transform"))
 
 
     def close(self):

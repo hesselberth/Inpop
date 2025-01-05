@@ -10,14 +10,12 @@ from constants import AU, JD2000, DEG2RAD
 from inpop import Inpop
 import numpy as np
 from os import path
-import sys, time
+import time
 import urllib.request
 
 from dtmath import RJD
 #from dt import TDBTime, JD2000
 from ttmtdb import TTmTDB_calc
-
-import pytest
 
 def parse_testpo(filename):
     print(f"Loading {filename}")
