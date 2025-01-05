@@ -115,7 +115,7 @@ def inpop_test(filename, mode, crosscheck=False):
         #     err = err / np.linalg.norm(pv[0])
             err = abs(err*AU)
             if err > .00004:
-                print(T[i], C[i], X[i], RJD(JD[i]), RES_PV[i]*AU, REF[i]*AU)
+                print(T[i], C[i], X[i], JD[i], RES_PV[i]*AU, REF[i]*AU)
                 e+=1
     tstop = time.time()
     t_pv = tstop - tstart
