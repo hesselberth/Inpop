@@ -10,13 +10,14 @@ Created on Fri Dec  4 14:16:35 2024
 Version: 0.3
 """
 
-from constants import Lb, Kb, T0, TDB0
+from constants import Lb, Kb, LKb, T0, TDB0, SPD
 from cnumba import cnjit
 import numpy as np
 import struct
-from os import SEEK_END
+from os import stat, SEEK_END
 from sys import byteorder
 
+TDB0bSPD = TDB0 / SPD
 
 @cnjit(signature_or_function = 'UniTuple(float64[:], 2)(float64, int64)')
 def chpoly(x, degree):
@@ -63,6 +64,8 @@ def calcm(jd, jd2, offset, ncoeffs, ngranules, data, \
     ----------
     jd         : float
                  Julian date
+    jd2        : float
+                 Julian date (time fraction)
     offset     : int
                  coeff_ptr[0]
     ncoeffs    : int
@@ -118,7 +121,7 @@ class Inpop:
                  "sun":10, "ssb":11, "emb":12}
 
 
-    def __init__(self, filename, load=True):
+    def __init__(self, filename, load=None):
         """
         Inpop constructor.
         
@@ -149,6 +152,12 @@ class Inpop:
             self.machine_byteorder = ">"
             self.opposite_byteorder = "<"
         self.byteorder = self.machine_byteorder
+        if not isinstance(load, bool):
+            size = stat(self.path).st_size
+            if size > 50e6:
+                load = False
+            else:
+                load = True
         self.mem = load
         self.open()
 
@@ -240,7 +249,7 @@ class Inpop:
         self.has_time      = (self.format//10)%10  == 1
         self.has_asteroids = (self.format//100)%10 == 1
 
-        # Use the single unit base and transform where necessary
+        # Use the following unit base and transform where necessary
         self.unit_time  = "s"
         self.unit_angle = "rad"
         self.unit_pos   = "au"
@@ -454,7 +463,7 @@ class Inpop:
         if isinstance(jd, np.ndarray):
             if len(jd) == 1:
                 jd2 = 0
-                jd  = jd[1]
+                jd  = jd[0]
             elif len(jd) == 2:
                 jd2 = jd[1]
                 jd  = jd[0]
@@ -488,7 +497,7 @@ class Inpop:
         if t < 0 or t > 12 or c < 0 or c > 12:
             raise(LookupError("Code must be between 0 and 12."))
 
-        # Decode ts argument. Apply relativistic cobversions if needed.
+        # Decode ts argument. Compute relativistic cobversions if needed.
         if kwargs:
             if "ts" in kwargs:
                 ts = kwargs["ts"]
@@ -496,13 +505,13 @@ class Inpop:
                 if timescale == self.timescale:
                     gr_pos_factor = 1
                 elif timescale == "TCB" and self.timescale == "TDB":
-                    TDBmTCB = -Lb * ((jd - T0) + jd2) + TDB0 / 86400
+                    TDBmTCB = -Lb * ((jd - T0) + jd2) + TDB0bSPD
                     jd2 += TDBmTCB
-                    gr_pos_factor = 1/(1-Lb)
+                    gr_pos_factor = 1 / (1 - Lb)
                 elif timescale == "TDB" and self.timescale == "TCB":
-                    TCBmTDB = Lb/Kb * ((jd - T0) + jd2) - TDB0 / (86400 * Kb)
+                    TCBmTDB = LKb * ((jd - T0) + jd2) - TDB0bSPD  # / Kb
                     jd2 += TCBmTDB
-                    gr_pos_factor = Kb
+                    gr_pos_factor = 1 / (1 + LKb) # Kb
                 else:
                     raise(ValueError("Invaalid timescale, must be TDB or TCB."))
             else:
@@ -564,7 +573,7 @@ class Inpop:
         if isinstance(jd, np.ndarray):
             if len(jd) == 1:
                 jd2 = 0
-                jd  = jd[1]
+                jd  = jd[0]
             elif len(jd) == 2:
                 jd2 = jd[1]
                 jd  = jd[0]
@@ -580,10 +589,10 @@ class Inpop:
                 if timescale == self.timescale:
                     pass
                 elif timescale == "TCB" and self.timescale == "TDB":
-                    TDBmTCB = -Lb * ((jd - T0) + jd2) + TDB0 / 86400
+                    TDBmTCB = -Lb * ((jd - T0) + jd2) + TDB0bSPD
                     jd2 += TDBmTCB
                 elif timescale == "TDB" and self.timescale == "TCB":
-                    TCBmTDB = (Lb/Kb) * ((jd - T0) + jd2) - TDB0 / (86400 * Kb)
+                    TCBmTDB = LKb * ((jd - T0) + jd2) - TDB0bSPD  # / Kb
                     jd2 += TCBmTDB
                 else:
                     raise(ValueError("Invaalid timescale, must be TDB or TCB."))
@@ -617,7 +626,7 @@ class Inpop:
         if isinstance(tt_jd, np.ndarray):
             if len(tt_jd) == 1:
                 tt_jd2 = 0
-                tt_jd  = tt_jd[1]
+                tt_jd  = tt_jd[0]
             elif len(tt_jd) == 2:
                 tt_jd2 = tt_jd[1]
                 tt_jd  = tt_jd[0]
@@ -650,11 +659,10 @@ class Inpop:
         float
                 The difference TCG-TDB for the TCG time, given in seconds.
         """
-        
         if isinstance(tcg_jd, np.ndarray):
             if len(tcg_jd) == 1:
                 tcg_jd2 = 0
-                tcg_jd  = tcg_jd[1]
+                tcg_jd  = tcg_jd[0]
             elif len(tcg_jd) == 2:
                 tcg_jd2 = tcg_jd[1]
                 tcg_jd  = tcg_jd[0]
@@ -662,12 +670,11 @@ class Inpop:
                 raise(ValueError("JD Array must have length 1 or 2"))
         else:
             tcg_jd2 = 0
-
  
         if self.timescale == "TCB":
             if self.has_time:
                 return self.calc1(tcg_jd, tcg_jd2, self.TTmTDB_ptr)[0][0]
-        raise(KeyError("Ephemeris lacks TTmTDB transform"))
+        raise(KeyError("Ephemeris lacks TCGmTCB transform"))
 
 
     def close(self):
