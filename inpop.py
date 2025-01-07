@@ -7,7 +7,7 @@ Created on Fri Dec  4 14:16:35 2024
 
 @author: Marcel Hesselberth
 
-Version: 0.3
+Version: 0.4
 """
 
 from constants import Lb, LKb, T0, TDB0, SPD
@@ -16,6 +16,7 @@ import numpy as np
 import struct
 from os import stat, SEEK_END
 from sys import byteorder
+
 
 TDB0bSPD = TDB0 / SPD
 
@@ -424,7 +425,7 @@ class Inpop:
         return np.array([pos, vel], dtype = np.double)
 
 
-    def unpack(jd):
+    def jd_unpack(jd):
         """
         Julian date decoder
         
@@ -469,7 +470,34 @@ class Inpop:
         return jd, jd2
 
 
-    def PV(self, jd, t, c, **kwargs):
+    def rfilter(result, rate):
+        """
+        Result filter
+        
+        In the methods below, the computed variable is always returned.
+        In addition it is possible to return the rate (first time derivative)
+        as well, changing the dimension of the result.
+            
+        Parameters
+        ----------
+        res  : np.array (2d array [property, rate])
+               The result
+        rate : bool
+               True: return 2d array [property, rate]
+               False: return vector or scalar property
+               
+
+        Returns
+        -------
+        ndarray or scalar
+
+        """
+        if rate:
+            return result
+        return result[0]
+
+
+    def PV(self, jd, t, c, rate = True, **kwargs):
         """
         Position and velocity of a target t relative to center c in the ICRF.
 
@@ -510,7 +538,7 @@ class Inpop:
         body code invalid.
         """
         # unpack jd
-        jd1, jd2 = Inpop.unpack(jd)
+        jd1, jd2 = Inpop.jd_unpack(jd)
 
         # Convert target to integer
         if not isinstance(t, (int, np.integer)):
@@ -553,7 +581,7 @@ class Inpop:
                     jd2 += TCBmTDB
                     gr_pos_factor = 1 / (1 + LKb) # Kb
                 else:
-                    raise(ValueError("Invaalid timescale, must be TDB or TCB."))
+                    raise(ValueError("Invalid timescale, must be TDB or TCB."))
             else:
                 gr_pos_factor = 1
         else:
@@ -591,10 +619,10 @@ class Inpop:
         result= target - center
         result[0] *= gr_pos_factor * self.unit_pos_factor
         result[1] *= self.unit_vel_factor
-        return result
+        return Inpop.rfilter(result, rate)
 
 
-    def LBR(self, jd, **kwargs):
+    def LBR(self, jd, rate = True, **kwargs):
         """
         Physical libration angles of the moon.
 
@@ -610,7 +638,7 @@ class Inpop:
              The 3 physical libration angles in radians
         """
 
-        jd1, jd2 = Inpop.unpack(jd)
+        jd1, jd2 = Inpop.jd_unpack(jd)
 
         if kwargs:
             if "ts" in kwargs:
@@ -625,23 +653,20 @@ class Inpop:
                     TCBmTDB = LKb * ((jd - T0) + jd2) - TDB0bSPD  # / Kb
                     jd2 += TCBmTDB
                 else:
-                    raise(ValueError("Invaalid timescale, must be TDB or TCB."))
+                    raise(ValueError("Invalid timescale, must be TDB or TCB."))
 
-        return self.calc1(jd1, jd2, self.librat_ptr)[0]
+        result = self.calc1(jd1, jd2, self.librat_ptr)
+        return Inpop.rfilter(result, rate)
 
 
-    def TTmTDB(self, tt_jd):
+    def TTmTDB(self, tt_jd, rate = False):
         """
         Time difference between TT and TDB.
         
         Interpolated using Chebyshev polynomials for an ephemeris file in
-        TDB time that contains time scale transformation data
-        (self.timescale == "TDB" and self.has_time). Otherwise it is calculated
-        using TTmTDB_calc. Note that TDB on average runs at TT rate and this
-        is a small correction of order 1ms. The accuracy of the correction is
-        10 us.
+        TDB time that contains the time scale transformation 
+        (self.timescale == "TDB" and self.has_time).
         
-
         Parameters
         ----------
         tt_jd : float
@@ -654,15 +679,16 @@ class Inpop:
                 The difference TT-TDB for the TT time, given in seconds.
         """
 
-        tt_jd1, tt_jd2 = Inpop.unpack(tt_jd)
+        tt_jd1, tt_jd2 = Inpop.jd_unpack(tt_jd)
 
         if self.timescale == "TDB":
             if self.has_time:
-                return self.calc1(tt_jd1, tt_jd2, self.TTmTDB_ptr)[0][0]
+                result = self.calc1(tt_jd1, tt_jd2, self.TTmTDB_ptr)[:,0]
+                return Inpop.rfilter(result, rate)
         raise(KeyError("Ephemeris lacks TTmTDB transform"))
     
 
-    def TCGmTCB(self, tcg_jd):
+    def TCGmTCB(self, tcg_jd, rate = False):
         """
         Time difference between TCG and TCB.
         
@@ -680,11 +706,12 @@ class Inpop:
         float
                 The difference TCG-TDB for the TCG time, given in seconds.
         """
-        tcg_jd1, tcg_jd2 = Inpop.unpack(tcg_jd)
+        tcg_jd1, tcg_jd2 = Inpop.jd_unpack(tcg_jd)
  
         if self.timescale == "TCB":
             if self.has_time:
-                return self.calc1(tcg_jd1, tcg_jd2, self.TTmTDB_ptr)[0][0]
+                result = self.calc1(tcg_jd1, tcg_jd2, self.TTmTDB_ptr)[:,0]
+                return Inpop.rfilter(result, rate)
         raise(KeyError("Ephemeris lacks TCGmTCB transform"))
 
 
