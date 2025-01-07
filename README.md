@@ -6,7 +6,7 @@ can be downloaded from https://www.imcce.fr/inpop/.
 The documentation is at https://github.com/hesselberth/Inpop/wiki.
 
 
-### Legal
+### License information
 
 1. This Python library is released under GPLv3. The text of the license can be found at https://www.gnu.org/licenses/gpl-3.0.txt .
 2. The software neither has any relation to IMCCE nor to Leiden University.
