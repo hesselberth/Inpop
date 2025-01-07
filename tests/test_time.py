@@ -16,9 +16,9 @@ import numpy as np
 import pytest
 
 
-filename_tdb = "../inpop21a_TDB_m100_p100_tt.dat"
-filename_tcb = "../inpop21a_TCB_m100_p100_tcg.dat"
-filename_not = "../inpop21a_TCB_m100_p100_bigendian.dat"
+filename_tdb = "../ephem/inpop21a_TDB_m100_p100_tt.dat"
+filename_tcb = "../ephem/inpop21a_TCB_m100_p100_tcg.dat"
+filename_not = "../ephem/inpop21a_TCB_m100_p100_bigendian.dat"
 
 
 #  TDB

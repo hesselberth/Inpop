@@ -14,10 +14,10 @@ sys.path.append(os.getcwd() + '/..')
 from testlib import pv_testpo, TTmTDB_theory, TCGmTCB_theory
 
 
-filename_tdb = "../inpop21a_TDB_m100_p100_tt.dat"
-filename_tcb = "../inpop21a_TCB_m100_p100_tcg.dat"
-filename_be  = "../inpop21a_TCB_m100_p100_bigendian.dat"
-filename_big = "../inpop21a_TDB_m1000_p1000_littleendian.dat"
+filename_tdb = "../ephem/inpop21a_TDB_m100_p100_tt.dat"
+filename_tcb = "../ephem/inpop21a_TCB_m100_p100_tcg.dat"
+filename_be  = "../ephem/inpop21a_TCB_m100_p100_bigendian.dat"
+filename_big = "../ephem/inpop21a_TDB_m1000_p1000_littleendian.dat"
 
 def test_all_modes_tdb():
     pv_testpo(filename_tdb, False)

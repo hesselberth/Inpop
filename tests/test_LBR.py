@@ -17,7 +17,7 @@ import numpy as np
 import pytest
 
 
-filename     = "../inpop21a_TDB_m100_p100_tt.dat"
+filename     = "../ephem/inpop21a_TDB_m100_p100_tt.dat"
 
 
 def test_file_open_failed():

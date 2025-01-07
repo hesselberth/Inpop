@@ -10,7 +10,7 @@ Created on Fri Dec  4 14:16:35 2024
 Version: 0.3
 """
 
-from constants import Lb, Kb, LKb, T0, TDB0, SPD
+from constants import Lb, LKb, T0, TDB0, SPD
 from cnumba import cnjit
 import numpy as np
 import struct
@@ -135,8 +135,9 @@ class Inpop:
                Path of an INPOP .dat file
         load : bool, optional
                If True, the file is completely loaded to memory.
-               If false, the file is accessed fully through seek operations,
-               The default is True.
+               If false, the file is accessed fully through seek operations.
+               The default is None, which loads the file in memory if the
+               file size is below about 50MB.
 
         Returns
         -------
@@ -289,7 +290,7 @@ class Inpop:
         Load the INPOP file in memory.
         
         This option speeds up the calculations by avoiding file operations.
-        This also allows Numba acceleration.
+        This option also allows Numba acceleration.
 
         Returns
         -------
@@ -410,7 +411,7 @@ class Inpop:
         span = self.interval / ngranules
         granule = int(((jd1 - jdl) + jd2) // span)  # compute the granule
         jd0 = jdl + granule * span
-        tc = 2 * (((jd1-jd0) + jd2) / span) - 1  # Chebyshev argument for the granule
+        tc = 2 * (((jd1-jd0) + jd2) / span) - 1  # Chebyshev time in granule
         assert(tc>=-1 and tc <=1)
         gaddr = int(raddr+(offset - 1 + 3 * granule * ncoeffs) * 8)  # -1 for C
         self.file.seek(gaddr)  # read 3 * ncoeffs 8 bit doubles
@@ -423,6 +424,51 @@ class Inpop:
         return np.array([pos, vel], dtype = np.double)
 
 
+    def unpack(jd):
+        """
+        Julian date decoder
+        
+        In the methods below, a Julian date may be:
+            - a single (64 bit floating point) number
+            - an ndarray of length 1
+            - an ndarray of length 2
+        Internally 2 64 bit floats are used, one for the integer (+ 0.5) date
+        and one for the time fraction. The first array value will have a
+        record and granule date subtracted, resulting in zero numerical error.
+        The second float now only has to be added to the difference, which is
+        at most a granule interval in size. This method of coding
+        [jdate, jtime] in an ndarray(dtype=np.double) is required when
+        sub-millisecond timing is needed. A single float has an error of 10's
+        of microseconds, 2 floats used as described above have ns precision.
+            
+
+        Parameters
+        ----------
+        jd : int, np.double, np.ndarray(dtype=np.double)
+             Julian date as either a (floating point) number, an array of
+             length 1 or an array of length 2 encoding [jdate, jtime]
+             where jtime < 1.
+
+        Returns
+        -------
+        jd1 : float
+        jd2 : float
+
+        """
+        if isinstance(jd, np.ndarray):
+            if len(jd) == 1:
+                jd2 = 0
+                jd  = jd[0]
+            elif len(jd) == 2:
+                jd2 = jd[1]
+                jd  = jd[0]
+            else:
+                raise(ValueError("JD Array must have length 1 or 2"))
+        else:
+            jd2 = 0
+        return jd, jd2
+
+
     def PV(self, jd, t, c, **kwargs):
         """
         Position and velocity of a target t relative to center c in the ICRF.
@@ -433,11 +479,15 @@ class Inpop:
         
         Parameters
         ----------
-        jd : np.double (or float)
-             Julian date in ephemeris time. INPOP is distributed in TDB and TCB.
-             timescales (see self.timescale).
-        t, c : integer between 0 and 12
-        Target body and the Center from which it is observed.
+        jd :      int, np.double, np.ndarray(dtype=np.double)
+                  Julian date in ephemeris time. INPOP is distributed in
+                  TDB and TCB. timescales (see self.timescale).
+        t, c :    integer between 0 and 12
+                  Target body and the Center from which it is observed.
+        **kwargs: ts: string, "TCB" or "TDB". Forces timescale independent of
+                  ephemeris timescale. The library will do the conversions.
+                  rate: bool. Determine whether the derivative (velocity) is
+                  returned. Default: True. If False, result is a 3-vector.
         
         0:  Mercury
         1:  Venus 
@@ -459,18 +509,8 @@ class Inpop:
         Error upon failure (no ephemeris file found, time outside ephemeris,
         body code invalid.
         """
-        # Unpack jd array. Must have length <=2.
-        if isinstance(jd, np.ndarray):
-            if len(jd) == 1:
-                jd2 = 0
-                jd  = jd[0]
-            elif len(jd) == 2:
-                jd2 = jd[1]
-                jd  = jd[0]
-            else:
-                raise(ValueError("JD Array must have length 1 or 2"))
-        else:
-            jd2 = 0
+        # unpack jd
+        jd1, jd2 = Inpop.unpack(jd)
 
         # Convert target to integer
         if not isinstance(t, (int, np.integer)):
@@ -523,29 +563,29 @@ class Inpop:
         if t == c:
             return np.zeros(6).reshape((2, 3))
         if t == 2:
-            target = self.calc1(jd, jd2, self.coeff_ptr[9]) * self.earthfactor \
-                   + self.calc1(jd, jd2, self.coeff_ptr[2])
+            target = self.calc1(jd1, jd2, self.coeff_ptr[9]) * self.earthfactor \
+                   + self.calc1(jd1, jd2, self.coeff_ptr[2])
         elif t == 9:
-            target = self.calc1(jd, jd2, self.coeff_ptr[9]) * self.moonfactor \
-                   + self.calc1(jd, jd2, self.coeff_ptr[2])
+            target = self.calc1(jd1, jd2, self.coeff_ptr[9]) * self.moonfactor \
+                   + self.calc1(jd1, jd2, self.coeff_ptr[2])
         elif t == 11:
             target = np.zeros(6).reshape((2, 3))
         elif t == 12:
-            target = self.calc1(jd, jd2, self.coeff_ptr[2])
+            target = self.calc1(jd1, jd2, self.coeff_ptr[2])
         else:
-            target = self.calc1(jd, jd2, self.coeff_ptr[t])
+            target = self.calc1(jd1, jd2, self.coeff_ptr[t])
         if c == 2:
-            center = self.calc1(jd, jd2, self.coeff_ptr[9]) * self.earthfactor \
-                   + self.calc1(jd, jd2, self.coeff_ptr[2])
+            center = self.calc1(jd1, jd2, self.coeff_ptr[9]) * self.earthfactor \
+                   + self.calc1(jd1, jd2, self.coeff_ptr[2])
         elif c == 9:
-            center = self.calc1(jd, jd2, self.coeff_ptr[9]) * self.moonfactor \
-                   + self.calc1(jd, jd2, self.coeff_ptr[2])
+            center = self.calc1(jd1, jd2, self.coeff_ptr[9]) * self.moonfactor \
+                   + self.calc1(jd1, jd2, self.coeff_ptr[2])
         elif c == 11:
             center = np.zeros(6).reshape((2, 3))
         elif c == 12:
-            center = self.calc1(jd, jd2, self.coeff_ptr[2])
+            center = self.calc1(jd1, jd2, self.coeff_ptr[2])
         else:
-            center = self.calc1(jd, jd2, self.coeff_ptr[c])
+            center = self.calc1(jd1, jd2, self.coeff_ptr[c])
 
         # relativistic and unit conversions
         result= target - center
@@ -570,17 +610,7 @@ class Inpop:
              The 3 physical libration angles in radians
         """
 
-        if isinstance(jd, np.ndarray):
-            if len(jd) == 1:
-                jd2 = 0
-                jd  = jd[0]
-            elif len(jd) == 2:
-                jd2 = jd[1]
-                jd  = jd[0]
-            else:
-                raise(ValueError("JD Array must have length 1 or 2"))
-        else:
-            jd2 = 0
+        jd1, jd2 = Inpop.unpack(jd)
 
         if kwargs:
             if "ts" in kwargs:
@@ -596,7 +626,8 @@ class Inpop:
                     jd2 += TCBmTDB
                 else:
                     raise(ValueError("Invaalid timescale, must be TDB or TCB."))
-        return self.calc1(jd, jd2, self.librat_ptr)[0]
+
+        return self.calc1(jd1, jd2, self.librat_ptr)[0]
 
 
     def TTmTDB(self, tt_jd):
@@ -623,21 +654,11 @@ class Inpop:
                 The difference TT-TDB for the TT time, given in seconds.
         """
 
-        if isinstance(tt_jd, np.ndarray):
-            if len(tt_jd) == 1:
-                tt_jd2 = 0
-                tt_jd  = tt_jd[0]
-            elif len(tt_jd) == 2:
-                tt_jd2 = tt_jd[1]
-                tt_jd  = tt_jd[0]
-            else:
-                raise(ValueError("JD Array must have length 1 or 2"))
-        else:
-            tt_jd2 = 0
+        tt_jd1, tt_jd2 = Inpop.unpack(tt_jd)
 
         if self.timescale == "TDB":
             if self.has_time:
-                return self.calc1(tt_jd, tt_jd2, self.TTmTDB_ptr)[0][0]
+                return self.calc1(tt_jd1, tt_jd2, self.TTmTDB_ptr)[0][0]
         raise(KeyError("Ephemeris lacks TTmTDB transform"))
     
 
@@ -659,21 +680,11 @@ class Inpop:
         float
                 The difference TCG-TDB for the TCG time, given in seconds.
         """
-        if isinstance(tcg_jd, np.ndarray):
-            if len(tcg_jd) == 1:
-                tcg_jd2 = 0
-                tcg_jd  = tcg_jd[0]
-            elif len(tcg_jd) == 2:
-                tcg_jd2 = tcg_jd[1]
-                tcg_jd  = tcg_jd[0]
-            else:
-                raise(ValueError("JD Array must have length 1 or 2"))
-        else:
-            tcg_jd2 = 0
+        tcg_jd1, tcg_jd2 = Inpop.unpack(tcg_jd)
  
         if self.timescale == "TCB":
             if self.has_time:
-                return self.calc1(tcg_jd, tcg_jd2, self.TTmTDB_ptr)[0][0]
+                return self.calc1(tcg_jd1, tcg_jd2, self.TTmTDB_ptr)[0][0]
         raise(KeyError("Ephemeris lacks TCGmTCB transform"))
 
 
