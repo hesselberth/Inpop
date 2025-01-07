@@ -14,11 +14,16 @@ from constants import Lb, LKb, T0, TDB0, SPD
 from cnumba import cnjit
 import numpy as np
 import struct
-from os import stat, SEEK_END
+from os import path, stat, SEEK_END
 from sys import byteorder
+from configparser import ConfigParser
+from cnumba import cjit, timer
 
 
-TDB0bSPD = TDB0 / SPD
+CONFIGFILE    = "inpop.ini"
+MEM_TRESHOLD  = 50e6  # Bytes
+TDB0bSPD      = TDB0 / SPD
+
 
 @cnjit(signature_or_function = 'UniTuple(float64[:], 2)(float64, int64)')
 def chpoly(x, degree):
@@ -122,7 +127,7 @@ class Inpop:
                  "sun":10, "ssb":11, "emb":12}
 
 
-    def __init__(self, filename, load=None):
+    def __init__(self, filename=None, load=None):
         """
         Inpop constructor.
         
@@ -145,8 +150,17 @@ class Inpop:
         None.
 
         """
-        self.path = filename
         self.file = None
+        self.lpath = path.realpath(path.dirname(__file__))
+        self.config = ConfigParser()
+        self.config.read(path.join(self.lpath, CONFIGFILE))
+
+        if not filename:
+            filename = self.config["inpopfile"]["default"]
+        ext = filename.rsplit(".", 1)[-1]
+        if not ext == self.config["inpopfile"]["ext"]:
+            raise(IOError("File extension must be .dat"))
+        
         if byteorder == "little":
             self.machine_byteorder = "<"
             self.opposite_byteorder = ">"
@@ -154,15 +168,36 @@ class Inpop:
             self.machine_byteorder = ">"
             self.opposite_byteorder = "<"
         self.byteorder = self.machine_byteorder
+
+        if not path.isfile(filename):
+            self.path = self.try_download(filename)
+        else:
+            self.path = filename
+
         if not isinstance(load, bool):
             size = stat(self.path).st_size
-            if size > 50e6:
+            if size > MEM_TRESHOLD:
                 load = False
             else:
                 load = True
+
         self.mem = load
         self.open()
 
+
+    def try_download(self, filename):
+        if path.sep in filename:  # don't download outside ephemeris directory
+            raise(FileNotFoundError(filename))
+        ephem_path = path.join(self.lpath, self.config["path"]["ephem"], filename)
+        if path.isfile(ephem_path):  # check if file is in ephem path
+            return ephem_path
+        inpop_version = filename.split("_", 1)[0]
+        url = self.config["ftp"]["base_url"] + inpop_version + "/" + filename
+        print(f"Downloading {url} to {ephem_path}...")
+        import urllib.request
+        urllib.request.urlretrieve(url, ephem_path)
+        return ephem_path
+        
 
     def open(self):
         """
@@ -427,7 +462,7 @@ class Inpop:
 
     def jd_unpack(jd):
         """
-        Julian date decoder
+        Julian date decoder.
         
         In the methods below, a Julian date may be:
             - a single (64 bit floating point) number
@@ -472,7 +507,7 @@ class Inpop:
 
     def rfilter(result, rate):
         """
-        Result filter
+        Filter rate from result based on boolean value rate.
         
         In the methods below, the computed variable is always returned.
         In addition it is possible to return the rate (first time derivative)
@@ -637,7 +672,6 @@ class Inpop:
         np.array(3, dype="float")
              The 3 physical libration angles in radians
         """
-
         jd1, jd2 = Inpop.jd_unpack(jd)
 
         if kwargs:
@@ -678,7 +712,6 @@ class Inpop:
         float
                 The difference TT-TDB for the TT time, given in seconds.
         """
-
         tt_jd1, tt_jd2 = Inpop.jd_unpack(tt_jd)
 
         if self.timescale == "TDB":
