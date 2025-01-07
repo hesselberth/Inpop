@@ -9,6 +9,7 @@ Created on Sun Jan 05 16:27:27 2025
 import os
 import sys
 sys.path.append(os.getcwd() + '/..')
+sys.path.append('..')
 
 from inpop import Inpop
 import io
