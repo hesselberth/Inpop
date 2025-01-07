@@ -45,11 +45,11 @@ def test_jd_inputs():
 
 def test_ts_arg():
     inpop = Inpop(filename)
-    ref = inpop.LBR(JD2000)
-    lbr  = inpop.LBR(JD2000, ts="TDB")
+    ref = inpop.LBR(JD2000, rate = False)
+    lbr  = inpop.LBR(JD2000, ts="TDB", rate = False)
     assert((lbr == ref).all())
-    ref = inpop.LBR(JD2000)
-    lbr  = inpop.LBR(JD2000, ts="TCB")
+    ref = inpop.LBR(JD2000, rate = False)
+    lbr  = inpop.LBR(JD2000, ts="TCB", rate = False)
     assert((lbr != ref).any())
     assert(((lbr - ref) < 2e-8).all())
     with pytest.raises(ValueError) as excinfo:
