@@ -59,9 +59,8 @@ def pv_testpo(filename, mode, crosscheck=False):
     print(f"Opening file in {s} mode for {c}")
     inpop = Inpop(filename, load=mode)
     print(inpop.path)
+
     # no open error
-    #print("File info:")
-    #print(inpop)
     n = len(inpop.constants)
     ts = inpop.timescale
     if ts == "TDB":
@@ -75,7 +74,7 @@ def pv_testpo(filename, mode, crosscheck=False):
     else:
         tscheck = ts
     
-    testpo_dir = path.dirname(filename)
+    testpo_dir = path.join(inpop.lpath, inpop.config["path"]["ephem"])
     filename = path.basename(filename)
     parts = filename.split("_")
     testpo_filename = "testpo."+parts[0].upper()+"_"+tscheck
@@ -117,7 +116,7 @@ def TTmTDB_theory(filename, mode):
     assert(inpop.timescale == "TDB")
 
     # no open error
-    testpo_dir = path.dirname(filename)
+    testpo_dir = path.join(inpop.lpath, inpop.config["path"]["ephem"])
     filename = path.basename(filename)
     parts = filename.split("_")
     testpo_filename = "testpo."+parts[0].upper()+"_TDB"
@@ -174,7 +173,7 @@ def TCGmTCB_theory(filename, mode):
     assert(inpop.timescale == "TCB")
 
     # no open error
-    testpo_dir = path.dirname(filename)
+    testpo_dir = path.join(inpop.lpath, inpop.config["path"]["ephem"])
     filename = path.basename(filename)
     parts = filename.split("_")
     testpo_filename = "testpo."+parts[0].upper()+"_TCB"
