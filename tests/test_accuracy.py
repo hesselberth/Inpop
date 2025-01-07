@@ -6,11 +6,6 @@ Created on Min Jan 06 21:37:00 2024
 @author: Marcel Hesselberth
 """
 
-# import os
-# import sys
-# sys.path.append(os.getcwd() + '/..')
-
-
 from testlib import pv_testpo, TTmTDB_theory, TCGmTCB_theory
 
 

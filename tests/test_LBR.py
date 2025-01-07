@@ -6,13 +6,18 @@ Created on Sun Jan 05 22:21:07 2025
 @author: Marcel Hesselberth
 """
 
+import os
+import sys
+sys.path.append(os.getcwd() + '/..')
+
+
 from inpop import Inpop
 from constants import JD2000
 import numpy as np
 import pytest
 
 
-filename     = "inpop21a_TDB_m100_p100_tt.dat"
+filename = "inpop21a_TDB_m100_p100_tt.dat"
 
 
 def test_file_open_failed():
