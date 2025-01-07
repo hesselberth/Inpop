@@ -6,11 +6,6 @@ Created on Sun Jan 05 16:27:27 2025
 @author: Marcel Hesselberth
 """
 
-import os
-import sys
-sys.path.append(os.getcwd() + '/..')
-sys.path.append('..')
-
 from inpop import Inpop
 import io
 import numpy as np

@@ -6,10 +6,6 @@ Created on Sun Jan 05 22:21:07 2025
 @author: Marcel Hesselberth
 """
 
-import os
-import sys
-sys.path.append(os.getcwd() + '/..')
-
 from inpop import Inpop
 from constants import JD2000
 import numpy as np
