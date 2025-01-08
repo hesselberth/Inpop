@@ -632,7 +632,7 @@ class Inpop:
         if t < 0 or t > 12 or c < 0 or c > 12:
             raise (LookupError("Code must be between 0 and 12."))
 
-        # Decode ts argument. Compute relativistic cobversions if needed.
+        # Decode ts argument. Compute relativistic conversions if needed.
         if kwargs:
             if "ts" in kwargs:
                 ts = kwargs["ts"]
@@ -654,7 +654,7 @@ class Inpop:
         else:
             gr_pos_factor = 1
 
-        # Decode and compute  special cases for earth, moon, emb, ssb
+        # Decode and compute special cases for earth, moon, emb, ssb
         if t == c:
             return np.zeros(6).reshape((2, 3))
         if t == 2:
