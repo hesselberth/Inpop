@@ -633,54 +633,55 @@ class Inpop:
             raise (LookupError("Code must be between 0 and 12."))
 
         # Decode ts argument. Compute relativistic conversions if needed.
-        if kwargs:
-            if "ts" in kwargs:
-                ts = kwargs["ts"]
-                timescale = ts.upper()
-                if timescale == self.timescale:
-                    gr_pos_factor = 1
-                elif timescale == "TCB" and self.timescale == "TDB":
-                    TDBmTCB = -Lb * ((jd - T0) + jd2) + TDB0_jd
-                    jd2 += TDBmTCB
-                    gr_pos_factor = 1 / (1 - Lb)
-                elif timescale == "TDB" and self.timescale == "TCB":
-                    TCBmTDB = LKb * ((jd - T0) + jd2) - TDB0_jd  # / Kb
-                    jd2 += TCBmTDB
-                    gr_pos_factor = 1 / (1 + LKb)  # Kb
-                else:
-                    raise (ValueError("Invalid timescale, must be TDB or TCB."))
-            else:
+        if kwargs and "ts" in kwargs:
+            ts = kwargs["ts"]
+            timescale = ts.upper()
+            if timescale == self.timescale:
                 gr_pos_factor = 1
+            elif timescale == "TCB" and self.timescale == "TDB":
+                TDBmTCB = -Lb * ((jd - T0) + jd2) + TDB0_jd
+                jd2 += TDBmTCB
+                gr_pos_factor = 1 / (1 - Lb)
+            elif timescale == "TDB" and self.timescale == "TCB":
+                TCBmTDB = LKb * ((jd - T0) + jd2) - TDB0_jd  # / Kb
+                jd2 += TCBmTDB
+                gr_pos_factor = 1 / (1 + LKb)  # Kb
+            else:
+                raise (ValueError("Invalid timescale, must be TDB or TCB."))
         else:
             gr_pos_factor = 1
 
         # Decode and compute special cases for earth, moon, emb, ssb
         if t == c:
             return np.zeros(6).reshape((2, 3))
-        if t == 2:
-            target = self.calc(jd1, jd2, self.coeff_ptr[9]) * self.earthfactor \
-                + self.calc(jd1, jd2, self.coeff_ptr[2])
-        elif t == 9:
-            target = self.calc(jd1, jd2, self.coeff_ptr[9]) * self.moonfactor \
-                + self.calc(jd1, jd2, self.coeff_ptr[2])
-        elif t == 11:
-            target = np.zeros(6).reshape((2, 3))
-        elif t == 12:
-            target = self.calc(jd1, jd2, self.coeff_ptr[2])
-        else:
-            target = self.calc(jd1, jd2, self.coeff_ptr[t])
-        if c == 2:
-            center = self.calc(jd1, jd2, self.coeff_ptr[9]) * self.earthfactor \
-                + self.calc(jd1, jd2, self.coeff_ptr[2])
-        elif c == 9:
-            center = self.calc(jd1, jd2, self.coeff_ptr[9]) * self.moonfactor \
-                + self.calc(jd1, jd2, self.coeff_ptr[2])
-        elif c == 11:
-            center = np.zeros(6).reshape((2, 3))
-        elif c == 12:
-            center = self.calc(jd1, jd2, self.coeff_ptr[2])
-        else:
-            center = self.calc(jd1, jd2, self.coeff_ptr[c])
+
+        match t:
+            case 2:
+                target = self.calc(jd1, jd2, self.coeff_ptr[9]) * self.earthfactor \
+                    + self.calc(jd1, jd2, self.coeff_ptr[2])
+            case 9:
+                target = self.calc(jd1, jd2, self.coeff_ptr[9]) * self.moonfactor \
+                    + self.calc(jd1, jd2, self.coeff_ptr[2])
+            case 11:
+                target = np.zeros(6).reshape((2, 3))
+            case 12:
+                target = self.calc(jd1, jd2, self.coeff_ptr[2])
+            case _:
+                target = self.calc(jd1, jd2, self.coeff_ptr[t])
+
+        match c:
+            case 2:
+                center = self.calc(jd1, jd2, self.coeff_ptr[9]) * self.earthfactor \
+                    + self.calc(jd1, jd2, self.coeff_ptr[2])
+            case 9:
+                center = self.calc(jd1, jd2, self.coeff_ptr[9]) * self.moonfactor \
+                    + self.calc(jd1, jd2, self.coeff_ptr[2])
+            case 11:
+                center = np.zeros(6).reshape((2, 3))
+            case 12:
+                center = self.calc(jd1, jd2, self.coeff_ptr[2])
+            case _:
+                center = self.calc(jd1, jd2, self.coeff_ptr[c])
 
         # Relativistic and unit conversions
         result = target - center
@@ -713,20 +714,19 @@ class Inpop:
         """
         jd1, jd2 = Inpop.jd_unpack(jd)
 
-        if kwargs:
-            if "ts" in kwargs:
-                ts = kwargs["ts"]
-                timescale = ts.upper()
-                if timescale == self.timescale:
-                    pass
-                elif timescale == "TCB" and self.timescale == "TDB":
-                    TDBmTCB = -Lb * ((jd - T0) + jd2) + TDB0_jd
-                    jd2 += TDBmTCB
-                elif timescale == "TDB" and self.timescale == "TCB":
-                    TCBmTDB = LKb * ((jd - T0) + jd2) - TDB0_jd  # / Kb
-                    jd2 += TCBmTDB
-                else:
-                    raise (ValueError("Invalid timescale, must be TDB or TCB."))
+        if kwargs and "ts" in kwargs:
+            ts = kwargs["ts"]
+            timescale = ts.upper()
+            if timescale == self.timescale:
+                pass
+            elif timescale == "TCB" and self.timescale == "TDB":
+                TDBmTCB = -Lb * ((jd - T0) + jd2) + TDB0_jd
+                jd2 += TDBmTCB
+            elif timescale == "TDB" and self.timescale == "TCB":
+                TCBmTDB = LKb * ((jd - T0) + jd2) - TDB0_jd  # / Kb
+                jd2 += TCBmTDB
+            else:
+                raise (ValueError("Invalid timescale, must be TDB or TCB."))
 
         result = self.calc(jd1, jd2, self.librat_ptr)
         return Inpop.rfilter(result, rate)
