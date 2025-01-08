@@ -10,7 +10,7 @@ Created on Fri Dec  4 14:16:35 2024
 Version: 0.5
 """
 
-from constants import Lb, LKb, T0, TDB0, SPD
+from constants import Lb, LKb, T0, TDB0_jd
 from cnumba import cnjit
 import numpy as np
 import struct
@@ -21,7 +21,6 @@ from configparser import ConfigParser
 
 CONFIGFILE    = "inpop.ini"  # In the installation directory
 FILE_TRESHOLD = 50e6         # Bytes
-TDB0bSPD      = TDB0 / SPD   # Relativistic time scale conversion param. in days
 
 
 lpath  = path.realpath(path.dirname(__file__))  # The path to this library
@@ -642,11 +641,11 @@ class Inpop:
                 if timescale == self.timescale:
                     gr_pos_factor = 1
                 elif timescale == "TCB" and self.timescale == "TDB":
-                    TDBmTCB = -Lb * ((jd - T0) + jd2) + TDB0bSPD
+                    TDBmTCB = -Lb * ((jd - T0) + jd2) + TDB0_jd
                     jd2 += TDBmTCB
                     gr_pos_factor = 1 / (1 - Lb)
                 elif timescale == "TDB" and self.timescale == "TCB":
-                    TCBmTDB = LKb * ((jd - T0) + jd2) - TDB0bSPD  # / Kb
+                    TCBmTDB = LKb * ((jd - T0) + jd2) - TDB0_jd  # / Kb
                     jd2 += TCBmTDB
                     gr_pos_factor = 1 / (1 + LKb) # Kb
                 else:
@@ -721,10 +720,10 @@ class Inpop:
                 if timescale == self.timescale:
                     pass
                 elif timescale == "TCB" and self.timescale == "TDB":
-                    TDBmTCB = -Lb * ((jd - T0) + jd2) + TDB0bSPD
+                    TDBmTCB = -Lb * ((jd - T0) + jd2) + TDB0_jd
                     jd2 += TDBmTCB
                 elif timescale == "TDB" and self.timescale == "TCB":
-                    TCBmTDB = LKb * ((jd - T0) + jd2) - TDB0bSPD  # / Kb
+                    TCBmTDB = LKb * ((jd - T0) + jd2) - TDB0_jd  # / Kb
                     jd2 += TCBmTDB
                 else:
                     raise(ValueError("Invalid timescale, must be TDB or TCB."))
