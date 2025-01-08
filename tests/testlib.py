@@ -12,7 +12,7 @@ sys.path.append(os.getcwd() + '/..')
 
 
 from constants import AU, JD2000, DEG2RAD, Lg, T0, TDB0, Lb
-from inpop import Inpop
+from inpop import Inpop, lpath, config
 import numpy as np
 from os import path
 import time
@@ -74,7 +74,7 @@ def pv_testpo(filename, mode, crosscheck=False):
     else:
         tscheck = ts
     
-    testpo_dir = path.join(inpop.lpath, inpop.config["path"]["ephem"])
+    testpo_dir = path.join(lpath, config["path"]["ephem"])
     filename = path.basename(filename)
     parts = filename.split("_")
     testpo_filename = "testpo."+parts[0].upper()+"_"+tscheck
@@ -89,7 +89,6 @@ def pv_testpo(filename, mode, crosscheck=False):
 
     print(f"Computing {2*n} state vectors...")
     tstart = time.time()
-    e=0
     for i in range(n):
         pv = inpop.PV(JD[i], T[i], C[i], ts=tscheck)
         RES_PV[i] = pv.reshape(6)[X[i]]
@@ -116,7 +115,7 @@ def TTmTDB_theory(filename, mode):
     assert(inpop.timescale == "TDB")
 
     # no open error
-    testpo_dir = path.join(inpop.lpath, inpop.config["path"]["ephem"])
+    testpo_dir = path.join(lpath, config["path"]["ephem"])
     filename = path.basename(filename)
     parts = filename.split("_")
     testpo_filename = "testpo."+parts[0].upper()+"_TDB"
@@ -154,7 +153,7 @@ def TTmTDB_theory(filename, mode):
     print()
     
 
-def TCGmTCB_calc(tt1, tt2=0):  # takes tt instead of tcg
+def TCGmTCB_calc(tt1, tt2=0):  # takes tt instead of tcg (TODO)
     tcgmtt = TCGmTT = (Lg / (1 - Lg)) * ((tt1 - T0) + tt2) * 86400
     jd_tcg, jd_tcg2 = tt2, tt2 + tcgmtt / 86400
     ttmtdb = TTmTDB_calc(tt1, tt2)
@@ -173,7 +172,7 @@ def TCGmTCB_theory(filename, mode):
     assert(inpop.timescale == "TCB")
 
     # no open error
-    testpo_dir = path.join(inpop.lpath, inpop.config["path"]["ephem"])
+    testpo_dir = path.join(lpath, config["path"]["ephem"])
     filename = path.basename(filename)
     parts = filename.split("_")
     testpo_filename = "testpo."+parts[0].upper()+"_TCB"

@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Compact library for reading INPOP files.
+Compact library for using INPOP files.
 
 Created on Fri Dec  4 14:16:35 2024
 
 @author: Marcel Hesselberth
 
-Version: 0.4
+Version: 0.5
 """
 
 from constants import Lb, LKb, T0, TDB0, SPD
@@ -17,12 +17,16 @@ import struct
 from os import path, stat, SEEK_END
 from sys import byteorder
 from configparser import ConfigParser
-from cnumba import cjit, timer
 
 
-CONFIGFILE    = "inpop.ini"
-MEM_TRESHOLD  = 50e6  # Bytes
-TDB0bSPD      = TDB0 / SPD
+CONFIGFILE    = "inpop.ini"  # In the installation directory
+FILE_TRESHOLD = 50e6         # Bytes
+TDB0bSPD      = TDB0 / SPD   # Relativistic time scale conversion param. in days
+
+
+lpath  = path.realpath(path.dirname(__file__))  # The path to this library
+config = ConfigParser()
+config.read(path.join(lpath, CONFIGFILE))       # The config file of this library
 
 
 @cnjit(signature_or_function = 'UniTuple(float64[:], 2)(float64, int64)')
@@ -51,8 +55,6 @@ def chpoly(x, degree):
     for i in range(2, degree):
         T[i] = 2.0 * x * T[i-1] - T[i-2]
         D[i] = 2.0 * T[i-1] + 2.0 * x * D[i-1] - D[i-2]
-        # alternative w. 1 term less but a division by 1-t**2
-        # D[i] = (-i*t*T[i] + i*T[i-1]) / (1-t*t)
     return T, D
 
 
@@ -62,9 +64,9 @@ def calcm(jd, jd2, offset, ncoeffs, ngranules, data, \
     """
     Compute a state vector (3-vector and its derivative) from data in memory.
 
-    This is the INPOP decoding routine common to the calculations, whether
+    This is the INPOP decoding routine common to all calculations, whether
     6d (position-velocity), 3d (libration angles) or 1d (time).
-    calcm is an accelerated version of Inpop.calc1.
+    calcm is an accelerated version of Inpop.calc.
 
     Parameters
     ----------
@@ -120,8 +122,9 @@ def calcm(jd, jd2, offset, ncoeffs, ngranules, data, \
 
 
 class Inpop:
-    """Decode Inpop .dat files and compute planetary positions."""
+    """Decode Inpop .dat files and compute planetary positions and moon librations."""
     
+    # These differ from NAIF codes.
     bodycodes = {"mercury":0, "venus":1, "earth":2, "mars":3, "jupiter":4,
                  "saturn":5, "uranus":6, "neptune":7, "pluto":8, "moon":9,
                  "sun":10, "ssb":11, "emb":12}
@@ -131,19 +134,25 @@ class Inpop:
         """
         Inpop constructor.
         
-        Class to compute state vectors (planetary position and velocity) from
-        the 4d INPOP ephemeris. Data is read from the .dat file using the INPOP
-        file format and may have little or big endian byte order.
+        Class to compute state vectors from the 4d INPOP ephemeris.
+        Data is read from the .dat file using the INPOP binary file format.
+        The file may have little or big endian byte order and TDB or TCB
+        time scales.
+        
+        If no filename is given, a default file 200 year TDB file is used.
+        If the file is not found, it is downloaded to the ephem directory.
+        Download will only be attempted if no directory is given. Files only
+        download to the default directory to reduce server traffic.
 
         Parameters
         ----------
-        path : string
-               Path of an INPOP .dat file
-        load : bool, optional
-               If True, the file is completely loaded to memory.
-               If false, the file is accessed fully through seek operations.
-               The default is None, which loads the file in memory if the
-               file size is below about 50MB.
+        filename : string
+                   Path to an INPOP .dat file
+        load :     bool, optional
+                   If True, the file is completely loaded into memory.
+                   If false, the file is accessed fully through seek operations.
+                   The default is None, which loads the file in memory if the
+                   file size is below FILE_TRESHOLD (about 50MB).
 
         Returns
         -------
@@ -151,14 +160,11 @@ class Inpop:
 
         """
         self.file = None
-        self.lpath = path.realpath(path.dirname(__file__))
-        self.config = ConfigParser()
-        self.config.read(path.join(self.lpath, CONFIGFILE))
-
+        
         if not filename:
-            filename = self.config["inpopfile"]["default"]
+            filename = config["inpopfile"]["default"]
         ext = filename.rsplit(".", 1)[-1]
-        if not ext == self.config["inpopfile"]["ext"]:
+        if not ext == config["inpopfile"]["ext"]:
             raise(IOError("File extension must be .dat"))
         
         if byteorder == "little":
@@ -170,13 +176,20 @@ class Inpop:
         self.byteorder = self.machine_byteorder
 
         if not path.isfile(filename):
-            self.path = self.try_download(filename)
+            self.path = self.search(filename)
         else:
             self.path = filename
 
-        if not isinstance(load, bool):
+        try:
             size = stat(self.path).st_size
-            if size > MEM_TRESHOLD:
+        except:
+            size = 0
+            
+        if not size:
+            raise(FileNotFoundError(filename))
+
+        if not isinstance(load, bool):
+            if size > FILE_TRESHOLD:
                 load = False
             else:
                 load = True
@@ -185,23 +198,41 @@ class Inpop:
         self.open()
 
 
-    def try_download(self, filename):
-        if path.sep in filename:  # don't download outside ephemeris directory
+    def search(self, filename):
+        """
+        Look for the INPOP file and attempt download if file not found.
+        
+        Files are always downloaded to config["path"]["ephem"].
+        This is also where files will be searched.
+
+        Parameters
+        ----------
+        filename : string
+                   filename of an INPOP .dat file
+
+        Returns
+        -------
+        ephem_path : TYPE
+            DESCRIPTION.
+
+        """
+        if path.sep in filename:  # files with specified path must exist
             raise(FileNotFoundError(filename))
-        ephem_path = path.join(self.lpath, self.config["path"]["ephem"], filename)
+        ephem_path = path.join(lpath, config["path"]["ephem"], filename)
         if path.isfile(ephem_path):  # check if file is in ephem path
             return ephem_path
+        # try download
         inpop_version = filename.split("_", 1)[0]
-        url = self.config["ftp"]["base_url"] + inpop_version + "/" + filename
+        url = config["ftp"]["base_url"] + inpop_version + "/" + filename
         print(f"Downloading {url} to {ephem_path}...")
         import urllib.request
         urllib.request.urlretrieve(url, ephem_path)
         return ephem_path
-        
+
 
     def open(self):
         """
-        Open the binary INPOP file.
+        Open the existing INPOP file.
         
         Read the header information, the constant values and initialize the
         lookup of Chebyshev polynomials. Some important variables are always
@@ -222,7 +253,7 @@ class Inpop:
         header_struct = struct.Struct(header_spec)
         bytestr       = self.file.read(header_struct.size)
         hb            = header_struct.unpack(bytestr)  # header block
-        self.DENUM    = hb[44]  # must be 100 for INPOP
+        self.DENUM    = hb[44]  # Must be 100 for INPOP
         if self.DENUM != 100:
             self.file.seek(0)
             self.byteorder = self.opposite_byteorder
@@ -236,34 +267,34 @@ class Inpop:
 
         self.jd_struct  = struct.Struct(f"{self.byteorder}dd") # julian dates
 
-        self.label      = []  # ephemeris label
+        self.label      = []  # Ephemeris label, list of 3 strings
         self.label.append(hb[0][:84].decode().strip())
         self.label.append(hb[0][84:168].decode().strip())
         self.label.append(hb[0][168:].decode().strip())
 
         const_names     = [hb[1][6*i:6*(i+1)] for i in range(400)]
 
-        self.jd_beg     = hb[2]      # julian start date
-        self.jd_end     = hb[3]      # julian end date
-        self.interval   = hb[4]      # julian interval
-        self.num_const  = hb[5]      # number of constants in the second record
+        self.jd_beg     = hb[2]      # Julian start date
+        self.jd_end     = hb[3]      # Julian end date
+        self.interval   = hb[4]      # Julian interval
+        self.num_const  = hb[5]      # Number of constants in the second record
         self.AU         = hb[6]      # Astronomical unit
         self.EMRAT      = hb[7]      # Mearth / Mmoon
         self.coeff_ptr  = [(hb[8+3*i:8+3*i+3]) for i in range(12)]
-        self.DENUM      = hb[44]     # ephemeris ID
-        self.librat_ptr = hb[45:48]  # libration pointer
-        self.recordsize = hb[48]     # size of the record in bytes
-        self.TTmTDB_ptr = hb[49:52]  # time transformation TTmTDB or TCGmTCB
+        self.DENUM      = hb[44]     # Ephemeris ID
+        self.librat_ptr = hb[45:48]  # Libration pointer
+        self.recordsize = hb[48]     # Size of the record in bytes
+        self.TTmTDB_ptr = hb[49:52]  # Time transformation TTmTDB or TCGmTCB
 
-        # these are the location, number of coefficients and number of granules
+        # Location, number of coefficients and number of granules
         # for the 12 bodies.
         self.coeff_ptr  = np.array(self.coeff_ptr, dtype = int)
         
-        # these are the location, number of coefficients and number of granules
+        # Location, number of coefficients and number of granules
         # for the libration angles of the moon.
         self.librat_ptr  = np.array(self.librat_ptr, dtype = int)
 
-        # these are the location, number of coefficients and number of granules
+        # Location, number of coefficients and number of granules
         # for the mapping of  TT-TDB or TCG-TCB
         self.TTmTDB_ptr  = np.array(self.TTmTDB_ptr, dtype = int)
         
@@ -323,7 +354,7 @@ class Inpop:
 
     def load(self):
         """
-        Load the INPOP file in memory.
+        Load the INPOP file entirely into memory.
         
         This option speeds up the calculations by avoiding file operations.
         This option also allows Numba acceleration.
@@ -337,12 +368,11 @@ class Inpop:
         size = self.file.tell()
         self.file.seek(0)
         if size % 8 != 0:
-            raise(ValueError("INPOP File has wrong length."))
+            raise(IOError("INPOP File has wrong length."))
         data = np.frombuffer(self.file.read(size), dtype=np.double)
         if self.byteorder != self.machine_byteorder:
             data = data.byteswap()  # Changes data (newbyteorder changes view)
         self.data = np.copy(data)   # Changes array status for Numba
-        #self.data.flags["ALIGNED"] = True
 
 
     def info(self):
@@ -399,7 +429,7 @@ class Inpop:
         return self.info()
 
 
-    def calc1(self, jd1, jd2, coeff_ptr):
+    def calc(self, jd1, jd2, coeff_ptr):
         """
         Calculate a state vector for a single body.
 
@@ -462,7 +492,7 @@ class Inpop:
 
     def jd_unpack(jd):
         """
-        Julian date decoder.
+        Decode Julian date.
         
         In the methods below, a Julian date may be:
             - a single (64 bit floating point) number
@@ -505,7 +535,7 @@ class Inpop:
         return jd, jd2
 
 
-    def rfilter(result, rate):
+    def rfilter(result, rate):  # TODO: integrate in calc
         """
         Filter rate from result based on boolean value rate.
         
@@ -547,6 +577,8 @@ class Inpop:
                   TDB and TCB. timescales (see self.timescale).
         t, c :    integer between 0 and 12
                   Target body and the Center from which it is observed.
+        rate :    bool
+                  whether to return velocity as well. Default is yes.
         **kwargs: ts: string, "TCB" or "TDB". Forces timescale independent of
                   ephemeris timescale. The library will do the conversions.
                   rate: bool. Determine whether the derivative (velocity) is
@@ -572,7 +604,7 @@ class Inpop:
         Error upon failure (no ephemeris file found, time outside ephemeris,
         body code invalid.
         """
-        # unpack jd
+        # Unpack jd
         jd1, jd2 = Inpop.jd_unpack(jd)
 
         # Convert target to integer
@@ -626,31 +658,31 @@ class Inpop:
         if t == c:
             return np.zeros(6).reshape((2, 3))
         if t == 2:
-            target = self.calc1(jd1, jd2, self.coeff_ptr[9]) * self.earthfactor \
-                   + self.calc1(jd1, jd2, self.coeff_ptr[2])
+            target = self.calc(jd1, jd2, self.coeff_ptr[9]) * self.earthfactor \
+                   + self.calc(jd1, jd2, self.coeff_ptr[2])
         elif t == 9:
-            target = self.calc1(jd1, jd2, self.coeff_ptr[9]) * self.moonfactor \
-                   + self.calc1(jd1, jd2, self.coeff_ptr[2])
+            target = self.calc(jd1, jd2, self.coeff_ptr[9]) * self.moonfactor \
+                   + self.calc(jd1, jd2, self.coeff_ptr[2])
         elif t == 11:
             target = np.zeros(6).reshape((2, 3))
         elif t == 12:
-            target = self.calc1(jd1, jd2, self.coeff_ptr[2])
+            target = self.calc(jd1, jd2, self.coeff_ptr[2])
         else:
-            target = self.calc1(jd1, jd2, self.coeff_ptr[t])
+            target = self.calc(jd1, jd2, self.coeff_ptr[t])
         if c == 2:
-            center = self.calc1(jd1, jd2, self.coeff_ptr[9]) * self.earthfactor \
-                   + self.calc1(jd1, jd2, self.coeff_ptr[2])
+            center = self.calc(jd1, jd2, self.coeff_ptr[9]) * self.earthfactor \
+                   + self.calc(jd1, jd2, self.coeff_ptr[2])
         elif c == 9:
-            center = self.calc1(jd1, jd2, self.coeff_ptr[9]) * self.moonfactor \
-                   + self.calc1(jd1, jd2, self.coeff_ptr[2])
+            center = self.calc(jd1, jd2, self.coeff_ptr[9]) * self.moonfactor \
+                   + self.calc(jd1, jd2, self.coeff_ptr[2])
         elif c == 11:
             center = np.zeros(6).reshape((2, 3))
         elif c == 12:
-            center = self.calc1(jd1, jd2, self.coeff_ptr[2])
+            center = self.calc(jd1, jd2, self.coeff_ptr[2])
         else:
-            center = self.calc1(jd1, jd2, self.coeff_ptr[c])
+            center = self.calc(jd1, jd2, self.coeff_ptr[c])
 
-        # relativistic and unit conversions
+        # Relativistic and unit conversions
         result= target - center
         result[0] *= gr_pos_factor * self.unit_pos_factor
         result[1] *= self.unit_vel_factor
@@ -663,9 +695,15 @@ class Inpop:
 
         Parameters
         ----------
-        jd : np.double (or float)
-             Julian time in ephemeris time. INPOP is distributed in TDB and TCB
-             timescales (see self.timescale).
+        jd :      np.double (or float)
+                  Julian time in ephemeris time. INPOP is distributed in TDB
+                  and TCB timescales (see self.timescale).
+        rate :    bool
+                  whether to return (angular) velocity as well. Default is yes.
+        **kwargs: ts: string, "TCB" or "TDB". Forces timescale independent of
+                  ephemeris timescale. The library will do the conversions.
+                  rate: bool. Determine whether the derivative (velocity) is
+                  returned. Default: True. If False, result is a 3-vector.
 
         Returns
         -------
@@ -689,7 +727,7 @@ class Inpop:
                 else:
                     raise(ValueError("Invalid timescale, must be TDB or TCB."))
 
-        result = self.calc1(jd1, jd2, self.librat_ptr)
+        result = self.calc(jd1, jd2, self.librat_ptr)
         return Inpop.rfilter(result, rate)
 
 
@@ -703,20 +741,21 @@ class Inpop:
         
         Parameters
         ----------
-        tt_jd : float
-                Julian time in the TT (terrestrial time) timescale.
-
+        tt_jd :   float
+                  Julian time in the TT (terrestrial time) timescale.
+        rate :    bool
+                  whether to return rate as well. Default is no.
 
         Returns
         -------
         float
-                The difference TT-TDB for the TT time, given in seconds.
+                  The difference TT-TDB for the TT time, given in seconds.
         """
         tt_jd1, tt_jd2 = Inpop.jd_unpack(tt_jd)
 
         if self.timescale == "TDB":
             if self.has_time:
-                result = self.calc1(tt_jd1, tt_jd2, self.TTmTDB_ptr)[:,0]
+                result = self.calc(tt_jd1, tt_jd2, self.TTmTDB_ptr)[:,0]
                 return Inpop.rfilter(result, rate)
         raise(KeyError("Ephemeris lacks TTmTDB transform"))
     
@@ -730,8 +769,10 @@ class Inpop:
 
         Parameters
         ----------
-        tcg_jd : float
-                 Julian time in the TCG (geocentric coordinate time) timescale.
+        tcg_jd :  float
+                  Julian time in the TCG (geocentric coordinate time) timescale.
+        rate :    bool
+                  whether to return rate as well. Default is no.
 
 
         Returns
@@ -743,7 +784,7 @@ class Inpop:
  
         if self.timescale == "TCB":
             if self.has_time:
-                result = self.calc1(tcg_jd1, tcg_jd2, self.TTmTDB_ptr)[:,0]
+                result = self.calc(tcg_jd1, tcg_jd2, self.TTmTDB_ptr)[:,0]
                 return Inpop.rfilter(result, rate)
         raise(KeyError("Ephemeris lacks TCGmTCB transform"))
 
