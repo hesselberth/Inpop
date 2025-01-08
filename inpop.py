@@ -160,7 +160,7 @@ class Inpop:
 
         """
         self.file = None
-        
+
         if not filename:
             filename = config["inpopfile"]["default"]
         ext = filename.rsplit(".", 1)[-1]
@@ -223,6 +223,8 @@ class Inpop:
             return ephem_path
         # try download
         inpop_version = filename.split("_", 1)[0]
+        if inpop_version[:5] != "inpop":
+            raise(IOError(f"Bad filename: {filename}"))
         url = config["ftp"]["base_url"] + inpop_version + "/" + filename
         print(f"Downloading {url} to {ephem_path}...")
         import urllib.request

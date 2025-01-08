@@ -26,12 +26,14 @@ def test_file_open_failed():
     with pytest.raises(IOError) as excinfo:
         lbr = inpop.LBR(JD2000)
 
+
 def test_jd_limits():
     inpop = Inpop(filename)
     with pytest.raises(ValueError) as excinfo:
         lbr = inpop.LBR(inpop.jd_beg - 1/86400)
     with pytest.raises(ValueError) as excinfo:
         lbr = inpop.LBR(inpop.jd_end + 1/86400)
+
 
 def test_jd_inputs():
     inpop = Inpop(filename)
@@ -42,6 +44,18 @@ def test_jd_inputs():
     assert((lbr == ref).all())
     with pytest.raises(ValueError) as excinfo:
         lbr = inpop.LBR(np.array([JD2000, 0.5, 0.0]))
+
+
+def test_rate():
+    inpop = Inpop(filename)
+    ref = inpop.LBR(JD2000)
+    assert(ref.shape == (2,3))
+    ref = inpop.LBR(JD2000, rate = True)
+    assert(ref.shape == (2,3))
+    ref = inpop.LBR(JD2000, rate = False)
+    assert(ref.shape == (3,))
+    inpop.close()    
+
 
 def test_ts_arg():
     inpop = Inpop(filename)
@@ -54,6 +68,3 @@ def test_ts_arg():
     assert(((lbr - ref) < 2e-8).all())
     with pytest.raises(ValueError) as excinfo:
         lbr  = inpop.LBR(JD2000, ts="TCG")
-
-
-    

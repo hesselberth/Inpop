@@ -45,6 +45,18 @@ def test_jd_inputs():
     with pytest.raises(ValueError) as excinfo:
         pv = inpop.PV(np.array([JD2000, 0.5, 0.0]), 12, 0)
 
+
+def test_rate():
+    inpop = Inpop(filename)
+    ref = inpop.PV(JD2000, "Saturn", "Earth")
+    assert(ref.shape == (2,3))
+    ref = inpop.PV(JD2000, "Saturn", "Earth", rate = True)
+    assert(ref.shape == (2,3))
+    ref = inpop.PV(JD2000, "Saturn", "Earth", rate = False)
+    assert(ref.shape == (3,))
+    inpop.close()    
+
+
 def test_target_center_string():
     inpop = Inpop(filename)
     ref = inpop.PV(JD2000, 5, 2)
@@ -69,5 +81,4 @@ def test_ts_arg():
     with pytest.raises(ValueError) as excinfo:
         pv  = inpop.PV(JD2000, "Saturn", "Earth", ts="TCG")
 
-
-    
+test_rate()

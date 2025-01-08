@@ -6,20 +6,55 @@ Created on Sun Jan 05 16:27:27 2025
 @author: Marcel Hesselberth
 """
 
-from inpop import Inpop
+import os
+import sys
+sys.path.append(os.getcwd() + '/..')
+
+
+from inpop import Inpop, lpath, config
 import io
 import numpy as np
 import pytest
 
 
-filename     = "inpop21a_TDB_m100_p100_tt.dat"
-filename_be  = "inpop21a_TCB_m100_p100_bigendian.dat"
-filename_bad = "inpop21a_TCB.dat"
+filename       = "inpop21a_TDB_m100_p100_tt.dat"
+filename_be    = "inpop21a_TCB_m100_p100_bigendian.dat"
+filename_bad   = "../inpop21a_TCB.dat"
+filename_worse = "foo.dat"
 
 
-def test_bad_file():
-    with pytest.raises(IOError) as excinfo:
+def test_config():
+    ext      = config["inpopfile"]["ext"]
+    default  = config["inpopfile"]["default"]
+    ephem    = config["path"]["ephem"]
+    tests    = config["path"]["test"]
+    base_url = config["ftp"]["base_url"]
+    assert(ext=="dat")
+    assert("inpop" in default)
+    assert(type(ephem) == str and len(ephem) > 0)
+    assert(type(tests) == str and len(tests) > 0)
+    assert(base_url[:8]=="https://" and base_url[-1] == "/")
+    
+    
+def test_bad_file():  # not found but contains path.sep
+    with pytest.raises(FileNotFoundError) as excinfo:
         inpop = Inpop(filename_bad)
+
+
+def test_worse_file():  # not found but no inpopXXy_
+    with pytest.raises(IOError) as excinfo:
+        inpop = Inpop(filename_worse)
+
+
+def test_empty_file():  # found, good name but size 0 = not found
+    ephem_path = os.path.join(lpath, config["path"]["ephem"])
+    emptyfilename = "inpop21a_EMPTY.dat"
+    path = os.path.join(ephem_path, emptyfilename)
+    file = open(path, "w")
+    file.close()
+    with pytest.raises(FileNotFoundError) as excinfo:
+        inpop = Inpop(emptyfilename)
+    os.unlink(path)
 
 
 def test_other_endianness():
@@ -67,5 +102,3 @@ def test_constants():
     n = len(inpop.constants)
     assert(n > 0)
     inpop.close()
-    
-    
