@@ -1,0 +1,2 @@
+prune */__pycache__
+prune */*.dat
