@@ -21,7 +21,7 @@ from inpop import Inpop
 inpop = Inpop("inpop21a_TDB_m100_p100_tt.dat")
 ```
 
-This will open the INPOP file. If the file is not found it will be downloaded automatically to the path given (if the path is writable). It is allowed to ommit the filename completely, in this case the most recent 200 year TDB file is opened in the current working directory or, if not found, is downloaded to this loation. Small INPOP files (-100 / +100 years) are loaded into memory for fast calculations, accelerated by just-in-time compilation through the LLVM compiler and Numba. If Numba is not available on the system the speedup by holding the file in memory will be significantly smaller.
+This will open the INPOP file. If the file is not found it will be downloaded automatically to the path given (if the path is writable). It is allowed to omit the filename completely, in this case the most recent 200 year TDB file is opened in the current working directory or, if not found, it is first downloaded to this loation. Small INPOP files (-100 / +100 years) are loaded into memory for fast calculations, accelerated by just-in-time compilation through the LLVM compiler and Numba. If Numba is not available on the system the speedup by holding the file in memory will be significantly smaller.
 
 It is possible to keep the data fully on disk and use seek operations to read the data into buffers:
 
