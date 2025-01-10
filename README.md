@@ -107,7 +107,7 @@ print(inpop)
 ```
 
 #### `PV(jd, target, center, rate=True, **kwargs)`
-This method computes the state of a solar system body, the target, with respect to a center at time jd. jd is the Julian date in the ephemeris time scale (TDB or TCB). Because of the limited precision of a double it is advised to split the Julian date in a day part and a time fraction if sub-millisecond accuracy is required. In that case jd should be a `np.array([date, time_fraction], dtype=np.double)` (in that order).
+This method computes the state of a solar system body (the target) with respect to a center at time jd. jd is the Julian date in the ephemeris time scale (TDB or TCB). Because of the limited precision of a `double` it is advised to split the Julian date in a day part and a time fraction if sub-millisecond accuracy is required. In that case jd should be a `np.array([date, time_fraction], dtype=np.double)` (in that order).
 
 target and center are integers from 0 to 12. The state vectors are returned as a numpy array [P, V] of type np.double. P and V are both 3-vectors containing the position and velocity respectively. The encoding for the target and the center is as follows:
 
@@ -130,7 +130,7 @@ target and center are integers from 0 to 12. The state vectors are returned as a
 If the above strings are passed to `PV` they will be converted automatically to the integer codes. For example, the position of the moon with respect to the earth on January 1 2000 at 12:00 TDB time was:
 
 ```python
-print(inpop.PV(2451545.0'moon', 'earth'))
+print(inpop.PV(2451545.0, 'moon', 'earth'))
 [[-0.0019492816590940113 -0.0017828919060276236 -0.0005087136946011068]
  [ 0.0003716704750190104 -0.0003846978294553674 -0.0001740301567948636]]
 ```
@@ -160,7 +160,7 @@ print(np.linalg.norm(inpop.PV(2451545.0, 'moon', 'earth', rate=False, ts="TCB") 
 
 As can be seen, there is a difference of 355.314 meters between these distances. The numerical precision for the earth-moon positions is in the 10 um range, much more precise than the available measurements, which are in the mm range.
 
-Note that the TDB-TCB conversions degrade numerical accuracy somewhat, to the 1e-13 AU range for Pluto at 50 AU. For maximum accuracy it is advised to use INPOP ephemeris files for the time scale in which data is required.
+Note that the TDB-TCB conversions degrade numerical accuracy somewhat, to the 1e-13 AU range for Pluto at 50 AU distance. For maximum accuracy it is advised to use INPOP ephemeris files for the time scale in which data is required.
 
 #### `LBR(jd, rate=True)`
 This method computes the physical libration angles of the moon. jd is again the Julian date in the ephemeris time scale. Note that since the earth and the moon rotate in the ICRF, the z-component winds linear in time with an oscillatory component superimposed. The angles are given in radians:
@@ -195,7 +195,7 @@ Closes the INPOP file (if it was still open).
 Destructor, makes sure there are no dangling file pointers
 
 #### A word about precision
-Inpop is fully written in python and uses double precision arithmetic. When running tests against reference data the numerical errors are 2e-14 AU for positions and sub-us level for time over 2 centuries. If sub-ms precision is required, 2 floats should be used for the date. The first one can be used for pseudo-integer date arithmetic and the second one for the day fraction. The library will subtract day offsets from the first jd argument without error and then add the day fraction to a smaller date, resulting in high precision calculations.
+Inpop is fully written in python and uses double precision arithmetic. When running tests against reference data the numerical errors are 2e-14 AU for positions and sub-us level for time over 2 centuries. If sub-ms precision is required, 2 floats should be used for the date. The first one can be used for pseudo-integer date arithmetic and the second one for the day fraction. The library will subtract day offsets from the first jd argument without error and then add the day fraction to a much smaller date, resulting in high precision calculations.
 
 ### AUTHOR
 Inpop is written by Marcel Hesselberth.
@@ -214,4 +214,4 @@ Marcel Hesselberth.
 3. INPOP data and other files on the IMCCE web server are the intellectual property of the IMCCE. For their conditions of use, see https://www.imcce.fr/mentions-legales.
 
 ### SEE ALSO
-CIP, CNAV
+CIP, CNAV and the documentation in inpop.py.
