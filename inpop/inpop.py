@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Compact library for using INPOP files.
+Python package for using INPOP files.
 
 Created on Fri Dec  4 14:16:35 2024
 
