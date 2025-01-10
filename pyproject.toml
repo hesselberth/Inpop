@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "Inpop"
-version = "0.5.2"
+version = "0.5.3"
 authors = [
   { name="Marcel Hesselberth", email="hessel@physics.leidenuniv.nl" },
 ]
