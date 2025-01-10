@@ -2,10 +2,10 @@
 Inpop - Calculate planet positions, lunar librations and time transformations using the high precision INPOP ephemeris.
 
 ### SYNOPSIS
-Inpop is a Python package for calculating planetary positions using very high precision INPOP ephemerides.
+Inpop is a Python package for calculating planetary positions using the very high precision INPOP ephemerides.
 INPOP ephemerides are produced and published by IMCCE (https://ftp.imcce.fr/pub/ephem/planets/). Published INPOP files contain Chebyshev coefficients for the position of the solar system bodies as well as the libration angles of the moon.
 
-Because the underlying models are based in general relativity, (most) INPOP files also contain time transformations. Since these depend on the positions of the solar system bodies, INPOP a 4D ephemeris. INPOP files are available in the TCB or TDB timescales. TCB files contain the transformation TCG-TCB (TCGmTDB) and TDB files contain the transformation TT-TDB (TTmTDB). INPOP .dat files are published in big-endian and little-endian byte order and in both a -100 / +100 year time span and a -1000 / +1000 year time span. Files of the latter type typically do not support the time scale transformations needed for the very high precision applications. Inpop aims to support all INPOP binary (.dat) files.
+Because the underlying models are based in general relativity, (most) INPOP files also contain time transformations. Since these depend on the positions of the solar system bodies, INPOP is a 4D ephemeris. INPOP files are available in the TCB or TDB timescales. TCB files contain the transformation TCG-TCB (TCGmTDB) and TDB files contain the transformation TT-TDB (TTmTDB). INPOP .dat files are published in big-endian and little-endian byte order and in both a -100 / +100 year time span and a -1000 / +1000 year time span. Files of the latter type typically do not support the time scale transformations needed for the very high precision applications. Inpop aims to support all INPOP binary (.dat) files.
 
 #### REQUIREMENTS
 Inpop depends on Numpy. Numba is not required but will result in a speedup when the file is loaded into memory.
@@ -21,7 +21,7 @@ from inpop import Inpop
 inpop = Inpop("inpop21a_TDB_m100_p100_tt.dat")
 ```
 
-This will open the INPOP file. If the file is not found it will be downloaded autoatically to the path given (if the path is writable). Small INPOP files (-100 / +100 years) are loaded into memory for fast calculations, accelerated by just-in-time compilation through the LLVM compiler and Numba. If Numba is not available on the system the speedup by holding the file in memory will be significantly smaller.
+This will open the INPOP file. If the file is not found it will be downloaded automatically to the path given (if the path is writable). It is allowed to ommit the filename completely, in this case the most recent 200 year TDB file is opened in the current working directory or, if not found, is downloaded to this loation. Small INPOP files (-100 / +100 years) are loaded into memory for fast calculations, accelerated by just-in-time compilation through the LLVM compiler and Numba. If Numba is not available on the system the speedup by holding the file in memory will be significantly smaller.
 
 It is possible to keep the data fully on disk and use seek operations to read the data into buffers:
 
@@ -30,7 +30,7 @@ from inpop import Inpop
 inpop = Inpop("inpop21a_TDB_m100_p100_tt.dat", load=False)
 ```
 
-Similarly, large files (-1000 / +1000 years) can be loaded into memory by specifying `load=True`.
+Similarly, large files (-1000 / +1000 years) can be forced into memory by specifying `load=True`.
 
 Once the Inpop class is initiated we can inspect the time range for which the INPOP file has data:
 
