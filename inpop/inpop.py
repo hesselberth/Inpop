@@ -14,7 +14,7 @@ from .constants import Lb, LKb, T0, TDB0_jd
 from .cnumba import cnjit
 import numpy as np
 import struct
-from os import path, stat, SEEK_END
+from os import path, stat, unlink, SEEK_END
 from sys import byteorder
 from configparser import ConfigParser
 
@@ -212,9 +212,8 @@ class Inpop:
 
         Returns
         -------
-        ephem_path : TYPE
-            DESCRIPTION.
-
+        path : string
+               path to the inpop file.
         """
         dirname, inpopfilename = path.split(filename)
         if dirname == "":
@@ -228,7 +227,15 @@ class Inpop:
         else:
             raise(FileNotFoundError("Path to INPOP file does not exist."))
         # try download
-        url = config["ftp"]["base_url"] + inpop_version + "/" + filename
+        try:
+            testpath = path.join(dirname, "test")
+            file = open(testpath, "w")
+            file.write("test")
+            file.close()
+            unlink(testpath)
+        except:
+            raise (IOError(f"directory is not writable ({dirname})"))
+        url = config["ftp"]["base_url"] + inpop_version + "/" + inpopfilename
         print(f"Downloading {url} to {filename} ...")
         import urllib.request
         try:

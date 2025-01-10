@@ -21,6 +21,7 @@ filename       = "inpop21a_TDB_m100_p100_tt.dat"
 filename_be    = "inpop21a_TCB_m100_p100_bigendian.dat"
 filename_bad   = "../inpop21a_TCB.dat"
 filename_worse = "foo.dat"
+filename_uw    = "unwritable/" + filename
 
 
 def test_config():
@@ -55,6 +56,16 @@ def test_empty_file():  # found, good name but size 0 = not found
     with pytest.raises(FileNotFoundError) as excinfo:
         inpop = Inpop(emptyfilename)
     os.unlink(path)
+
+
+def test_writable_path():
+        test = os.path.join("writable", filename)
+        inpop = Inpop(test)
+        os.unlink(test)
+
+def test_unwritable_path():
+    with pytest.raises(IOError) as excinfo:
+        inpop = Inpop(filename_uw)
 
 
 def test_other_endianness():
