@@ -24,8 +24,7 @@ FILE_TRESHOLD = 50e6      # Bytes
 
 
 lpath = path.realpath(path.dirname(__file__))  # The path to this library
-config = ConfigParser()
-# The config file of this library
+config = ConfigParser()  # The config file of this library
 config.read(path.join(lpath, CONFIGFILE))
 
 
