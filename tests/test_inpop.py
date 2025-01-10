@@ -128,3 +128,9 @@ def test_constants():
     n = len(inpop.constants)
     assert(n > 0)
     inpop.close()
+
+print(np.get_printoptions())
+np.set_printoptions(precision=20)
+i = Inpop()
+from inpop.constants import JD2000
+print(i.LBR(JD2000))
