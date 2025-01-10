@@ -59,10 +59,10 @@ def test_empty_file():  # found, good name but size 0 = not found
 
 
 def test_writable_path():
-        try:
-            os.mkdir("writable")
-        except:
-            pass 
+#        try:
+        os.mkdir("writable")
+ #       except:
+ #           pass 
         test = os.path.join("writable", filename)
         inpop = Inpop(test)
         os.unlink(test)
