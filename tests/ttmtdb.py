@@ -15,7 +15,8 @@ def TTmTDB_calc1(tt_jd, tt_jd2, data=dt):
     """
     Time difference between TT and TDB calculated from a series evaluation.
     
-    The accuracy of the correction (cut off) is 10 us.
+    The accuracy of the correction is ~ 200 ns over 2 centuries.
+    See Fairhead & Bretagnon, A&A 229, 240-247, 1990
 
     Parameters
     ----------

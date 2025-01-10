@@ -153,7 +153,7 @@ def TTmTDB_theory(filename, mode):
     print()
     
 
-def TCGmTCB_calc(tt1, tt2=0):  # takes tt instead of tcg (TODO)
+def TCGmTCB_calc(tt1, tt2=0):  # takes tt instead of tcg, good enough for test
     tcgmtt = TCGmTT = (Lg / (1 - Lg)) * ((tt1 - T0) + tt2) * 86400
     jd_tcg, jd_tcg2 = tt2, tt2 + tcgmtt / 86400
     ttmtdb = TTmTDB_calc(tt1, tt2)

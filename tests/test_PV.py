@@ -82,5 +82,3 @@ def test_ts_arg():
     assert(((pv - ref) < 1e-8).all())
     with pytest.raises(ValueError) as excinfo:
         pv  = inpop.PV(JD2000, "Saturn", "Earth", ts="TCG")
-
-test_rate()
