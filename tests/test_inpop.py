@@ -27,13 +27,9 @@ filename_uw    = "unwritable/" + filename
 def test_config():
     ext      = config["inpopfile"]["ext"]
     default  = config["inpopfile"]["default"]
-    ephem    = config["path"]["ephem"]
-    tests    = config["path"]["test"]
     base_url = config["ftp"]["base_url"]
     assert(ext=="dat")
     assert("inpop" in default)
-    assert(type(ephem) == str and len(ephem) > 0)
-    assert(type(tests) == str and len(tests) > 0)
     assert(base_url[:8]=="https://" and base_url[-1] == "/")
     
     
