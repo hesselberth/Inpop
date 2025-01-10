@@ -20,7 +20,7 @@ from configparser import ConfigParser
 
 
 CONFIGFILE = "inpop.ini"  # In the installation directory
-FILE_TRESHOLD = 50e6         # Bytes
+FILE_TRESHOLD = 50e6      # Bytes
 
 
 lpath = path.realpath(path.dirname(__file__))  # The path to this library
