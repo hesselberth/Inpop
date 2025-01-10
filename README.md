@@ -96,7 +96,7 @@ unit_angle             rad
 timescale              TDB
 ```
 
-All of these are instance variables. As can be seen this file has a time conversion from TT to TDB (`has_time` is `True`) and units of position, velocity, time and angle are au, au/day, seconds and radians respectively. This is always the case, even if `UNITE == 0` (meaning file units are km and km/day). Units will then be automatically converted to au and au/day.
+All of these are instance variables. As can be seen this file has a time conversion from TT to TDB (`has_time` is `True`) and units of position, velocity, time and angle are au, au/day, seconds and radians respectively. This is always the case, even if `UNITE == 0` (meaning file units are km and km/day). Units will be automatically converted to au and au/day.
 
 #### `__str__()`
 
@@ -106,7 +106,7 @@ Above information can be obtained by:
 print(inpop)
 ```
 
-#### `PV(jd, target, center, **kwargs)`
+#### `PV(jd, target, center, rate=True, **kwargs)`
 This method computes the state of a solar system body, the target, with respect to a center at time jd. jd is the Julian date in the ephemeris time scale (TDB or TCB). Because of the limited precision of a double it is advised to split the Julian date in a day part and a time fraction if sub-millisecond accuracy is required. In that case jd should be a `np.array([date, time_fraction], dtype=np.double)` (in that order).
 
 target and center are integers from 0 to 12. The state vectors are returned as a numpy array [P, V] of type np.double. P and V are both 3-vectors containing the position and velocity respectively. The encoding for the target and the center is as follows:
@@ -139,7 +139,7 @@ The first row is the position in AU, the second row the velocity in AU/day. The 
 
 ```python
 import numpy as np
-print(np.linalg.norm(inpop.PV('moon', 'earth', 2451545.0)[0] * inpop.AU))
+print(np.linalg.norm(inpop.PV(2451545.0, 'moon', 'earth')[0] * inpop.AU))
 402448.639909165  # km`
 ```
 
@@ -149,12 +149,12 @@ print(inpop.PV(2451545.0, 'moon', 'earth', rate=False))
 [-0.0019492816590940113 -0.0017828919060276236 -0.0005087136946011068]
 ```
 
-Because the INPOP file opened above contains TDB data (`self.timescale == "TDB"`), the result is given in the dynamical system. Note that there is a rate difference between TDB and TCB clocks and according to general relativity therefore a scale difference occurs between the positions (and masses) as well. Although the correction is of order 1e-8 this falls well within the numerical and data precision of Inpop.
+Because the INPOP file opened above contains TDB data (`self.timescale == "TDB"`), the result is given in the dynamical system. Note that there is a rate difference between TDB and TCB clocks and according to general relativity a scale difference occurs between the positions (and masses) as well. Although the correction is of order 1e-8 this falls well within the numerical and data precision of Inpop.
 
 By passing the keyword argument `ts` it is possible to force the result in a specific timescale:
 
 ```python
-print(np.linalg.norm(inpop.PV('moon', 'earth', 2451545.0, ts="TCB")[0] * inpop.AU))
+print(np.linalg.norm(inpop.PV(2451545.0, 'moon', 'earth', rate=False, ts="TCB") * inpop.AU))
 402448.2845950923 # km
 ```
 
@@ -171,9 +171,9 @@ print(inpop.LBR(2451545.0))
  [-1.1684365616883440e-04  4.5189513573293875e-05  2.3009987407557086e-01]]
 ```
 
-For increased time accuracy, again pass jd as `np.array([date, time_fraction], dtype=np.double)`.
+For increased time accuracy, again pass jd as `np.array([date, time_fraction], dtype=np.double)`. Like `PV`,`LBR` accepts the keyword argument `ts`.
 
-#### `TTmTDB(tt_jd)`
+#### `TTmTDB(tt_jd, rate=False)`
 Time difference between the TT (terrestrial time) and TDB (barycentric dynamical time) scales, computed from the Julian date in TT. TT and TDB tick on average at the same rate but over the year there are relativistic drifts of the order of a millisecond. TDB = TT - TTmTDB(tt_jd). Given the small correction and the slow change the function can be used both ways. The correction is given in seconds.
 
 ```python
@@ -184,7 +184,7 @@ print(inpop.TTmTDB(2451545.0))
 The accuracy of this result is better than 100ns for the past and next century.
 For high precision, pass jd as a date and time array of length 2 (`np.array([date, time_fraction], dtype=np.double)`).
 
-#### `TCGmTCB(tcg_jd)`
+#### `TCGmTCB(tcg_jd, rate=False)`
 Time difference between the TCB (barycentric coordinate time) and TCG (geocentric coordinate time) scales.
 Again, for high precision, pass jd as a date/time array of length 2 (`np.array([date, time_fraction], dtype=np.double)`).
 
