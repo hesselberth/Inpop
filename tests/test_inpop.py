@@ -12,7 +12,7 @@ sys.path.append(os.getcwd() + '/..')
 
 
 from inpop import Inpop, lpath, config
-import io
+import io, stat
 import numpy as np
 import pytest
 
@@ -59,14 +59,33 @@ def test_empty_file():  # found, good name but size 0 = not found
 
 
 def test_writable_path():
+        try:
+            os.mkdir("writable")
+        except:
+            pass 
         test = os.path.join("writable", filename)
         inpop = Inpop(test)
         os.unlink(test)
+        os.rmdir("writable")
+
 
 def test_unwritable_path():
-    with pytest.raises(IOError) as excinfo:
-        inpop = Inpop(filename_uw)
-
+        try:
+            os.mkdir("unwritable")
+        except:
+            pass
+        permissions = os.stat("unwritable").st_mode
+        os.chmod("unwritable", permissions & ~stat.S_IWUSR & ~stat.S_IWGRP & ~stat.S_IWOTH)
+        test = os.path.join("unwritable", filename)    
+        with pytest.raises(IOError) as excinfo:
+            inpop = Inpop(test)
+        try:
+            os.unlink(test)
+        except:
+            pass
+        else:
+            raise (IOError("Created file in unwritable folder"))
+        os.rmdir("unwritable")
 
 def test_other_endianness():
     inpop = Inpop(filename_be)
