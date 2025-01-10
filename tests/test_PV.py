@@ -54,6 +54,7 @@ def test_rate():
     ref = inpop.PV(JD2000, "Saturn", "Earth", rate = True)
     assert(ref.shape == (2,3))
     ref = inpop.PV(JD2000, "Saturn", "Earth", rate = False)
+    print("pos", ref)
     assert(ref.shape == (3,))
     inpop.close()    
 

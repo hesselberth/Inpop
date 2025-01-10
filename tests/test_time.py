@@ -116,3 +116,6 @@ def test_rate_tcb():
     ref = inpop.TCGmTCB(JD2000, rate = True)
     assert(ref.shape == (2,))
     inpop.close()    
+
+test_rate_tcb()
+test_rate_tdb()

@@ -20,7 +20,10 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Mathematics"
 ]
 keywords = ["astronomy", "astrometry", "physics", "mathematics", "celestial navigation"]
-
+dependencies = [
+  "numpy>1.21",
+  "numba>0.56",
+]
 [project.urls]
 Homepage = "https://github.com/hesselberth/Inpop"
 Issues = "https://github.com/hesselberth/Inpop/issues"

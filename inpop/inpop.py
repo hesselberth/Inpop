@@ -333,12 +333,10 @@ class Inpop:
         self.rate_factor = 2.0 / self.interval  # chain rule
         if self.constants["UNITE"] == 0:
             self.unite = 0
-            self.unit_pos_factor = 1.0
-            self.unit_vel_factor = self.rate_factor
+            self.unit_factor = 1.0
         else:
             self.unite = 1
-            self.unit_pos_factor = 1.0 / self.AU
-            self.unit_vel_factor = self.rate_factor / self.AU
+            self.unit_factor = 1.0 / self.AU
 
         # If no timescale is found it is TDB (file version 1.0)
         if "TIMESC" in self.constants:
@@ -434,7 +432,7 @@ class Inpop:
         """
         return self.info()
 
-    def calc(self, jd1, jd2, coeff_ptr):
+    def calc(self, jd1, jd2, coeff_ptr, rate):
         """
         Calculate a state vector for a single body.
 
@@ -449,16 +447,18 @@ class Inpop:
         ----------
         jd        : float
                     Date in ephemeris time.
-        offset    : int
-                    Record offset in the file.
-        ncoeffs   : int
-                    Number of Chebyshev coefficients
-        ngranules : int
-                    Number of granules
+        coeff_ptr : ndarray(dtype=int)
+                    offset, ncoeffs, ngranules
+                    record offset, number of Chebyshev coefficients number of
+                    granules
+        rate:       bool
+                    Whether to return only the value (position, angle, time)
+                    or to include its derivative. The default depends on the
+                    caller. This option changes the dimension of the result.
 
         Returns
         -------
-        2x3 matrix pos, vel
+        2x3 matrix pos, vel or (if rate=False) 3-vector pos.
 
         """
         jd = jd1 + jd2
@@ -467,9 +467,12 @@ class Inpop:
                               % (self.jd_beg, self.jd_end)))
         offset, ncoeffs, ngranules = coeff_ptr
         if self.mem:
-            return calcm(jd1, jd2, offset, ncoeffs, ngranules,
-                         self.data, self.jd_beg, self.interval,
-                         self.nrecords, self.recordsize)
+            pos, vel = calcm(jd1, jd2, offset, ncoeffs, ngranules,
+                             self.data, self.jd_beg, self.interval,
+                             self.nrecords, self.recordsize)
+            if rate:
+                return np.array([pos, vel*self.rate_factor], dtype=np.double)
+            return pos
         else:  # file based
             if not self.file:
                 raise (IOError(f"Ephemeris file ({self.path}) not open."))
@@ -493,8 +496,12 @@ class Inpop:
         coeffs.resize((3, ncoeffs))  # 3 x ncoeffs matrix
         T, D = chpoly(tc, ncoeffs)  # 2 x ncoeffs
         pos = np.dot(coeffs, T)
-        vel = np.dot(coeffs, D) * ngranules
-        return np.array([pos, vel], dtype=np.double)
+        if rate:
+            #print("bar")
+            vel = np.dot(coeffs, D) * ngranules * self.rate_factor
+            return np.array([pos, vel], dtype=np.double)
+        #print("foo")
+        return pos
 
     def jd_unpack(jd):
         """
@@ -539,32 +546,6 @@ class Inpop:
         else:
             jd2 = 0
         return jd, jd2
-
-    def rfilter(result, rate):  # TODO: integrate in calc
-        """
-        Filter rate from result based on boolean value rate.
-
-        In the methods below, the computed variable is always returned.
-        In addition it is possible to return the rate (first time derivative)
-        as well, changing the dimension of the result.
-
-        Parameters
-        ----------
-        res  : np.array (2d array [property, rate])
-               The result
-        rate : bool
-               True: return 2d array [property, rate]
-               False: return vector or scalar property
-
-
-        Returns
-        -------
-        ndarray or scalar
-
-        """
-        if rate:
-            return result
-        return result[0]
 
     def PV(self, jd, t, c, rate=True, **kwargs):
         """
@@ -664,39 +645,43 @@ class Inpop:
 
         match t:
             case 2:
-                target = self.calc(jd1, jd2, self.coeff_ptr[9]) * self.earthfactor \
-                    + self.calc(jd1, jd2, self.coeff_ptr[2])
+                target = self.calc(jd1, jd2, self.coeff_ptr[9], rate) \
+                    * self.earthfactor \
+                    + self.calc(jd1, jd2, self.coeff_ptr[2], rate)
             case 9:
-                target = self.calc(jd1, jd2, self.coeff_ptr[9]) * self.moonfactor \
-                    + self.calc(jd1, jd2, self.coeff_ptr[2])
+                target = self.calc(jd1, jd2, self.coeff_ptr[9], rate) \
+                    * self.moonfactor \
+                    + self.calc(jd1, jd2, self.coeff_ptr[2], rate)
             case 11:
                 target = np.zeros(6).reshape((2, 3))
             case 12:
-                target = self.calc(jd1, jd2, self.coeff_ptr[2])
+                target = self.calc(jd1, jd2, self.coeff_ptr[2], rate)
             case _:
-                target = self.calc(jd1, jd2, self.coeff_ptr[t])
+                target = self.calc(jd1, jd2, self.coeff_ptr[t], rate)
 
         match c:
             case 2:
-                center = self.calc(jd1, jd2, self.coeff_ptr[9]) * self.earthfactor \
-                    + self.calc(jd1, jd2, self.coeff_ptr[2])
+                center = self.calc(jd1, jd2, self.coeff_ptr[9], rate) \
+                    * self.earthfactor \
+                    + self.calc(jd1, jd2, self.coeff_ptr[2], rate)
             case 9:
-                center = self.calc(jd1, jd2, self.coeff_ptr[9]) * self.moonfactor \
-                    + self.calc(jd1, jd2, self.coeff_ptr[2])
+                center = self.calc(jd1, jd2, self.coeff_ptr[9], rate) \
+                    * self.moonfactor \
+                    + self.calc(jd1, jd2, self.coeff_ptr[2], rate)
             case 11:
                 center = np.zeros(6).reshape((2, 3))
             case 12:
-                center = self.calc(jd1, jd2, self.coeff_ptr[2])
+                center = self.calc(jd1, jd2, self.coeff_ptr[2], rate)
             case _:
-                center = self.calc(jd1, jd2, self.coeff_ptr[c])
+                center = self.calc(jd1, jd2, self.coeff_ptr[c], rate)
 
         # Relativistic and unit conversions
         result = target - center
-        result[0] *= gr_pos_factor * self.unit_pos_factor
-        result[1] *= self.unit_vel_factor
-        return Inpop.rfilter(result, rate)
+        result[0] *= gr_pos_factor * self.unit_factor
+        result[1, ...] *= self.unit_factor
+        return result
 
-    def LBR(self, jd, rate=True, **kwargs):  #  TODO fix rate
+    def LBR(self, jd, rate=True, **kwargs):
         """
         Physical libration angles of the moon.
 
@@ -735,9 +720,8 @@ class Inpop:
             else:
                 raise (ValueError("Invalid timescale, must be TDB or TCB."))
 
-        result = self.calc(jd1, jd2, self.librat_ptr)
-        result[1] *= self.rate_factor
-        return Inpop.rfilter(result, rate)
+        result = self.calc(jd1, jd2, self.librat_ptr, rate)
+        return result
 
     def TTmTDB(self, tt_jd, rate=False):
         """
@@ -764,8 +748,8 @@ class Inpop:
 
         if self.timescale == "TDB":
             if self.has_time:
-                result = self.calc(tt_jd1, tt_jd2, self.TTmTDB_ptr)[:, 0]
-                return Inpop.rfilter(result, rate)
+                result = self.calc(tt_jd1, tt_jd2, self.TTmTDB_ptr, rate)[... , [0]]
+                return result[... , 0]
         raise (KeyError("Ephemeris lacks TTmTDB transform"))
 
     def TCGmTCB(self, tcg_jd, rate=False):
@@ -794,8 +778,8 @@ class Inpop:
 
         if self.timescale == "TCB":
             if self.has_time:
-                result = self.calc(tcg_jd1, tcg_jd2, self.TTmTDB_ptr)[:, 0]
-                return Inpop.rfilter(result, rate)
+                result = self.calc(tcg_jd1, tcg_jd2, self.TTmTDB_ptr, rate)[... , [0]]
+                return result[... , 0]
         raise (KeyError("Ephemeris lacks TCGmTCB transform"))
 
     def close(self):
