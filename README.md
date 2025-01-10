@@ -201,7 +201,7 @@ Inpop is fully written in python and uses double precision arithmetic. When runn
 Inpop is written by Marcel Hesselberth.
 
 ### REPORTING BUGS
-       Inpop online help: https://github.com/hesselberth/Inpop/issues
+Inpop online help: https://github.com/hesselberth/Inpop/issues
 
 ### COPYRIGHT
 Marcel Hesselberth.
