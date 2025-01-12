@@ -107,7 +107,7 @@ print(inpop)
 ```
 
 #### `PV(jd, target, center, rate=True, **kwargs)`
-This method computes the state of a solar system body (the target) with respect to a center at time jd. jd is the Julian date in the ephemeris time scale (TDB or TCB). Because of the limited precision of a `double` it is advised to split the Julian date in a day part and a time fraction if sub-millisecond accuracy is required. In that case jd should be a `np.array([date, time_fraction], dtype=np.double)` (in that order).
+This method computes the state (position and velocity) of a solar system body (the target) with respect to another solar system body (the center) at time jd. jd is the Julian date in the ephemeris time scale (TDB or TCB). Because of the limited precision of a `double` it is advised to split the Julian date in a day part and a time fraction if sub-millisecond accuracy is required. In that case jd should be a `np.array([date, time_fraction], dtype=np.double)` (in that order).
 
 target and center are integers from 0 to 12. The state vectors are returned as a numpy array [P, V] of type np.double. P and V are both 3-vectors containing the position and velocity respectively. The encoding for the target and the center is as follows:
 
