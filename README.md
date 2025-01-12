@@ -158,9 +158,9 @@ print(np.linalg.norm(inpop.PV(2451545.0, 'moon', 'earth', rate=False, ts="TCB") 
 402448.2845950923 # km
 ```
 
-As can be seen, there is a difference of 355.314 meters between these distances. The numerical precision for the earth-moon positions is in the 10 um range, much more precise than the available measurements, which are in the mm range.
+As can be seen, there is a difference of 355.314 meters between these distances. The numerical precision for the earth-moon positions is in the 10 um range, much more precise than the best available measurements. In case you're puzzled about the magnitude of this difference: the scaling applies to the solar system barycentric distances of moon and earth.
 
-Note that the TDB-TCB conversions degrade numerical accuracy somewhat, to the 1e-13 AU range for Pluto at 50 AU distance. For maximum accuracy it is advised to use INPOP ephemeris files for the time scale in which data is required.
+Note that the TDB-TCB conversions degrade numerical accuracy somewhat, to the 1e-13 AU range for Pluto at ~50 AU distance. For maximum accuracy it is advised to use INPOP ephemeris files for the time scale in which data is required.
 
 #### `LBR(jd, rate=True)`
 This method computes the physical libration angles of the moon. jd is again the Julian date in the ephemeris time scale. Note that since the earth and the moon rotate in the ICRF, the z-component winds linear in time with an oscillatory component superimposed. The angles are given in radians:
