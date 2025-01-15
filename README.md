@@ -32,7 +32,7 @@ inpop = Inpop("inpop21a_TDB_m100_p100_tt.dat", load=False)
 
 Similarly, large files (-1000 / +1000 years) can be forced into memory by specifying `load=True`.
 
-Once the Inpop class is initiated we can inspect the time range for which the INPOP file has data:
+Once the Inpop class is initiated you can inspect the time range for which the INPOP file has data:
 
 ```python
 print(inpop.jd_beg, inpop.jd_end)
@@ -107,9 +107,9 @@ print(inpop)
 ```
 
 #### `PV(jd, target, center, rate=True, **kwargs)`
-This method computes the state (position and velocity) of a solar system body (the target) with respect to another solar system body (the center) at time jd. jd is the Julian date in the ephemeris time scale (TDB or TCB). Because of the limited precision of a `double` it is advised to split the Julian date in a day part and a time fraction if sub-millisecond accuracy is required. In that case jd should be a `tuple` or an `np.array(dtype=np.double)` with length 2. The first item is the date, the second one the time fraction.
+This method computes the state (position and velocity) of a solar system body (the target) with respect to another solar system body (the center) at time jd. jd is the Julian date in the ephemeris time scale (TDB or TCB). Because of the limited precision of a `double` it is advised to split the Julian date in a day part and a time fraction if sub-millisecond accuracy is required. In that case jd should be a `tuple` or an `np.array(dtype=np.double)` of length 2. The first item is the date, the second one the time fraction.
 
-target and center are integers from 0 to 12. The state vectors are returned as a numpy array [P, V] of type np.double. P and V are both 3-vectors containing the position and velocity respectively. The encoding for the target and the center is as follows:
+`target` and `center` are integers from 0 to 12. The state vectors are returned as a numpy array [P, V] of type np.double. P and V are both 3-vectors containing the position and velocity respectively. The encoding for the target and the center is as follows:
 
 ```
  0 mercury
