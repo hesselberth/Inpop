@@ -107,7 +107,7 @@ print(inpop)
 ```
 
 #### `PV(jd, target, center, rate=True, **kwargs)`
-This method computes the state (position and velocity) of a solar system body (the target) with respect to another solar system body (the center) at time jd. jd is the Julian date in the ephemeris time scale (TDB or TCB). Because of the limited precision of a `double` it is advised to split the Julian date in a day part and a time fraction if sub-millisecond accuracy is required. In that case jd should be a `np.array([date, time_fraction], dtype=np.double)` (in that order).
+This method computes the state (position and velocity) of a solar system body (the target) with respect to another solar system body (the center) at time jd. jd is the Julian date in the ephemeris time scale (TDB or TCB). Because of the limited precision of a `double` it is advised to split the Julian date in a day part and a time fraction if sub-millisecond accuracy is required. In that case jd should be a `tuple` or an `np.array(dtype=np.double)` with length 2. The first item is the date, the second one the time fraction.
 
 target and center are integers from 0 to 12. The state vectors are returned as a numpy array [P, V] of type np.double. P and V are both 3-vectors containing the position and velocity respectively. The encoding for the target and the center is as follows:
 
@@ -158,7 +158,7 @@ print(np.linalg.norm(inpop.PV(2451545.0, 'moon', 'earth', rate=False, ts="TCB") 
 402448.2845950923 # km
 ```
 
-As can be seen, there is a difference of 355.314 meters between these distances. The numerical precision for the earth-moon positions is in the 10 um range, much more precise than the best available measurements. In case you're puzzled about the magnitude of this difference: the scaling applies to the solar system barycentric distances of moon and earth.
+There is a difference of 355.314 meters between these distances. The numerical precision for the earth-moon positions is in the 10 um range, much more precise than the best available measurements. In case you're puzzled about the magnitude of this difference: the scaling applies to the solar system barycentric distances of moon and earth.
 
 Note that the TDB-TCB conversions degrade numerical accuracy somewhat, to the 1e-13 AU range for Pluto at ~50 AU distance. For maximum accuracy it is advised to use INPOP ephemeris files for the time scale in which data is required.
 

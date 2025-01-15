@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "Inpop"
-version = "0.5.3"
+version = "0.5.4"
 authors = [
   { name="Marcel Hesselberth", email="hessel@physics.leidenuniv.nl" },
 ]
@@ -27,6 +27,7 @@ dependencies = [
 [project.urls]
 Homepage = "https://github.com/hesselberth/Inpop"
 Issues = "https://github.com/hesselberth/Inpop/issues"
+Git = "https://github.com/hesselberth/"
 
 [tool.hatch.build.targets.wheel]
 packages = ["inpop"]

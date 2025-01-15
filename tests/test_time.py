@@ -46,8 +46,12 @@ def test_jd_inputs_tdb():
     assert((dt == ref).all())
     dt  = inpop.TTmTDB(np.array([JD2000, 0.5]))
     assert((dt == ref).all())
-    with pytest.raises(ValueError) as excinfo:
-        dt = inpop.TTmTDB(np.array([JD2000, 0.5, 0.0]))
+    with pytest.raises(TypeError) as excinfo:
+        pv = inpop.TTmTDB([])  # wrong type
+    with pytest.raises(TypeError) as excinfo:
+        pv = inpop.TTmTDB(())  # wrong length
+    with pytest.raises(TypeError) as excinfo:
+        pv = inpop.TTmTDB(np.array([]))  # wrong length
 
 
 def test_ts_tdb():
@@ -91,8 +95,12 @@ def test_jd_inputs_tcb():
     assert((dt == ref).all())
     dt  = inpop.TCGmTCB(np.array([JD2000, 0.5]))
     assert((dt == ref).all())
-    with pytest.raises(ValueError) as excinfo:
-        dt = inpop.TCGmTCB(np.array([JD2000, 0.5, 0.0]))
+    with pytest.raises(TypeError) as excinfo:
+        pv = inpop.TCGmTCB([])  # wrong type
+    with pytest.raises(TypeError) as excinfo:
+        pv = inpop.TCGmTCB(())  # wrong length
+    with pytest.raises(TypeError) as excinfo:
+        pv = inpop.TCGmTCB(np.array([]))  # wrong length
 
 
 def test_ts_tcb():

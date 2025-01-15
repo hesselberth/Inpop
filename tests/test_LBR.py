@@ -42,8 +42,13 @@ def test_jd_inputs():
     assert((lbr == ref).all())
     lbr  = inpop.LBR(np.array([JD2000, 0.5]))
     assert((lbr == ref).all())
-    with pytest.raises(ValueError) as excinfo:
-        lbr = inpop.LBR(np.array([JD2000, 0.5, 0.0]))
+    with pytest.raises(TypeError) as excinfo:
+        pv = inpop.LBR([], 12, 0)  # wrong type
+    with pytest.raises(TypeError) as excinfo:
+        pv = inpop.LBR((), 12, 0)  # wrong length
+    with pytest.raises(TypeError) as excinfo:
+        pv = inpop.LBR(np.array([]), 12, 0)  # wrong length
+
 
 
 def test_rate():

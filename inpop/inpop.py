@@ -515,6 +515,7 @@ class Inpop:
 
         In the methods below, a Julian date may be:
             - a single (64 bit floating point) number
+            - a tuple containing 2 64 bit floating point numbers
             - an ndarray of length 1
             - an ndarray of length 2
         Internally 2 64 bit floats are used, one for the integer (+ 0.5) date
@@ -540,15 +541,15 @@ class Inpop:
         jd2 : float
 
         """
-        if isinstance(jd, np.ndarray):
+        if isinstance(jd, (np.ndarray, tuple)):
             if len(jd) == 1:
                 jd2 = 0
                 jd = jd[0]
-            elif len(jd) == 2:
+            elif len(jd) >= 2:
                 jd2 = jd[1]
                 jd = jd[0]
             else:
-                raise (ValueError("JD Array must have length 1 or 2"))
+                raise (TypeError("jd array or tuple may not have zero length"))
         else:
             jd2 = 0
         return jd, jd2

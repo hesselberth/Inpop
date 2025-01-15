@@ -43,8 +43,12 @@ def test_jd_inputs():
     assert((pv == ref).all())
     pv  = inpop.PV(np.array([JD2000, 0.5]), "Saturn", "Earth")
     assert((pv == ref).all())
-    with pytest.raises(ValueError) as excinfo:
-        pv = inpop.PV(np.array([JD2000, 0.5, 0.0]), 12, 0)
+    with pytest.raises(TypeError) as excinfo:
+        pv = inpop.PV([], 12, 0)  # wrong type
+    with pytest.raises(TypeError) as excinfo:
+        pv = inpop.PV((), 12, 0)  # wrong length
+    with pytest.raises(TypeError) as excinfo:
+        pv = inpop.PV(np.array([]), 12, 0)  # wrong length
 
 
 def test_rate():
