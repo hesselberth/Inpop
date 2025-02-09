@@ -140,7 +140,7 @@ class Inpop:
         time scales.
 
         If no filename is given, a default 200 year TDB file is used.
-        If the file is not found, it is downloaded.
+        If the file is not found, download is attempted.
 
         Parameters
         ----------
