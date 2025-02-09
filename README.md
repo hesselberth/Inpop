@@ -1,5 +1,5 @@
 ### NAME
-Inpop - Calculate planet positions, lunar librations and time transformations using the high precision INPOP ephemeris.
+Inpop - Calculate planet positions, lunar librations and time transformations using the IMCCE INPOP ephemeris.
 
 ### SYNOPSIS
 Inpop is a Python package for calculating planetary positions using the very high precision INPOP ephemerides.
