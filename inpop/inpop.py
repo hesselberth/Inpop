@@ -139,7 +139,7 @@ class Inpop:
         The file may have little or big endian byte order and TDB or TCB
         time scales.
 
-        If no filename is given, a default file 200 year TDB file is used.
+        If no filename is given, a default 200 year TDB file is used.
         If the file is not found, it is downloaded to the ephem directory.
         Download will only be attempted if no directory is given. Files only
         download to the default directory to reduce server traffic.
