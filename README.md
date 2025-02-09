@@ -3,7 +3,7 @@ Inpop - Calculate planet positions, lunar librations and time transformations us
 
 ### SYNOPSIS
 Inpop is a Python package for calculating planetary positions using the very high precision INPOP ephemerides.
-INPOP ephemerides are produced and published by IMCCE (https://ftp.imcce.fr/pub/ephem/planets/). Published INPOP files contain Chebyshev coefficients for the position of the solar system bodies as well as the libration angles of the moon.
+INPOP ephemerides are produced and published by IMCCE (https://ftp.imcce.fr/pub/ephem/planets/). These files contain Chebyshev coefficients for the position of the solar system bodies as well as the libration angles of the moon.
 
 Because the underlying models are based in general relativity, (most) INPOP files also contain time transformations. Since these depend on the positions of the solar system bodies, INPOP is a 4D ephemeris. INPOP files are available in the TCB or TDB timescales. TCB files contain the transformation TCG-TCB (TCGmTDB) and TDB files contain the transformation TT-TDB (TTmTDB). INPOP .dat files are published in big-endian and little-endian byte order and in both a -100 / +100 year time span and a -1000 / +1000 year time span. Files of the latter type typically do not support the time scale transformations needed for the very high precision applications. Inpop aims to support all INPOP binary (.dat) files.
 
