@@ -422,19 +422,14 @@ class Inpop:
         s += f"unit_time              {self.unit_time}\n"
         s += f"unit_angle             {self.unit_angle}\n"
         s += f"timescale              {self.timescale}"
-        # s += f"\ncoeff_ptr:\n{self.coeff_ptr}"
+        #  s += f"\ncoeff_ptr:\n{self.coeff_ptr}"
         return s
 
     def __str__(self):
-        """
-        Enable printing of an Inpop instance.
-
-        Returns
-        -------
-        string info()
-
-        """
         return self.info()
+    
+    def __repr__(self):
+        return f"Inpop(filename='{self.path}', load={self.mem})"
 
     def calc(self, jd1, jd2, coeff_ptr, rate):
         """
