@@ -134,3 +134,4 @@ np.set_printoptions(precision=20)
 i = Inpop()
 from inpop.constants import JD2000
 print(i.LBR(JD2000))
+print(repr(i))
