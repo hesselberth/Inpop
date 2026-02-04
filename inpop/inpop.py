@@ -7,8 +7,11 @@ Created on Fri Dec  4 14:16:35 2024
 
 @author: Marcel Hesselberth
 
-Version: 0.5
+Version: 1.0 (stable). 
 """
+
+__version__ = "1.0.0"
+
 
 from .constants import Lb, LKb, T0, TDB0_jd
 from .cnumba import cnjit
@@ -469,8 +472,8 @@ class Inpop:
         """
         jd = jd1 + jd2
         if jd < self.jd_beg or jd > self.jd_end:
-            raise (ValueError("Julian date must be between %.1f and %.1f."
-                              % (self.jd_beg, self.jd_end)))
+            raise (ValueError("Julian date outside file span, must be between \
+                              %.1f and %.1f." % (self.jd_beg, self.jd_end)))
         offset, ncoeffs, ngranules = coeff_ptr
         if self.mem:
             pos, vel = calcm(jd1, jd2, offset, ncoeffs, ngranules,

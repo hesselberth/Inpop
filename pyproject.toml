@@ -4,11 +4,11 @@ build-backend = "hatchling.build"
 
 [project]
 name = "Inpop"
-version = "0.5.4"
+version = "1.0.0"
 authors = [
   { name="Marcel Hesselberth", email="hessel@physics.leidenuniv.nl" },
 ]
-description = "Calculate planet positions, lunar librations and time transformations using the high precision INPOP epmemeris."
+description = "Calculate planet positions, lunar librations and time transformations using the high precision INPOP ephmemeris."
 readme = "README.md"
 requires-python = ">=3.10"
 classifiers = [
